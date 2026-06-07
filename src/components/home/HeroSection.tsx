@@ -37,7 +37,7 @@ export function HeroSection() {
           LOKYO
         </motion.p>
         <motion.h1 variants={item} className="mt-4 max-w-2xl font-serif text-5xl font-bold leading-tight text-white sm:text-7xl">
-          Dress the Moment
+          Look Like You
         </motion.h1>
         <motion.p variants={item} className="mt-5 max-w-md text-lg text-white/85">
           Curated outfits and standout pieces for a life worth dressing up for.
