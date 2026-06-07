@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  orders        Order[]
+  wishlist      WishlistItem[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String   @db.Text
+  price       Float
+  comparePrice Float?
+  images      String[]
+  colors      String[]
+  sizes       String[]
+  stock       Int      @default(100)
+  category    String
+  brand       String?
+  material    String?
+  createdAt   DateTime @default(now())
+  styleItems  StyleItem[]
+  wishlistItems WishlistItem[]
+  orderItems  OrderItem[]
+}
+
+model Style {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  title          String
+  category       String
+  description    String   @db.Text
+  coverImage     String
+  bundleDiscount Float    @default(10)
+  season         String?
+  occasion       String?
+  createdAt      DateTime @default(now())
+  items          StyleItem[]
+}
+
+model StyleItem {
+  id        String  @id @default(cuid())
+  styleId   String
+  productId String
+  hotspotX  Float
+  hotspotY  Float
+  style     Style   @relation(fields: [styleId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  userId    String
+  status    String      @default("pending")
+  total     Float
+  createdAt DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id])
+  items     OrderItem[]
+  payment   Payment?
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+  size      String?
+  color     String?
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  orderId     String   @unique
+  provider    String
+  status      String   @default("pending")
+  amount      Float
+  reference   String?
+  createdAt   DateTime @default(now())
+  order       Order    @relation(fields: [orderId], references: [id])
+}
+
+model WishlistItem {
+  id        String  @id @default(cuid())
+  userId    String
+  productId String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  @@unique([userId, productId])
+}
