@@ -19,9 +19,10 @@ async function getOutfit(slug: string) {
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const outfit = await prisma.style.findUnique({ where: { slug: params.slug } });
+  const { slug } = await params;
+  const outfit = await prisma.style.findUnique({ where: { slug } });
   if (!outfit) return { title: "Outfit Not Found" };
   return {
     title: outfit.title,
@@ -32,9 +33,10 @@ export async function generateMetadata({
 export default async function OutfitDetailPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const outfit = await getOutfit(params.slug);
+  const { slug } = await params;
+  const outfit = await getOutfit(slug);
   if (!outfit) notFound();
 
   const related = await prisma.style.findMany({

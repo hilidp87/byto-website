@@ -21,9 +21,10 @@ async function getProduct(slug: string) {
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const product = await prisma.product.findUnique({ where: { slug: params.slug } });
+  const { slug } = await params;
+  const product = await prisma.product.findUnique({ where: { slug } });
   if (!product) return { title: "Product Not Found" };
   return {
     title: product.title,
@@ -34,9 +35,10 @@ export async function generateMetadata({
 export default async function ProductDetailPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const product = await getProduct(params.slug);
+  const { slug } = await params;
+  const product = await getProduct(slug);
   if (!product) notFound();
 
   const discount = calcDiscount(product.price, product.comparePrice);
