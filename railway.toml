@@ -1,9 +1,10 @@
 [build]
 builder = "nixpacks"
+buildCommand = "npm run build && npx prisma db push"
 
 [deploy]
-startCommand = "npm start"
+startCommand = "next start -H 0.0.0.0 -p ${PORT:-3000}"
 healthcheckPath = "/"
-healthcheckTimeout = 60
+healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
