@@ -10,22 +10,31 @@ import type { Product, Style } from "@/types";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [outfits, products] = await Promise.all([
-    prisma.style.findMany({
-      take: 3,
-      orderBy: { createdAt: "desc" },
-      include: { items: { include: { product: true } } },
-    }),
-    prisma.product.findMany({ take: 4, orderBy: { createdAt: "desc" } }),
-  ]);
+  let outfits: Style[] = [];
+  let products: Product[] = [];
+
+  try {
+    const [fetchedOutfits, fetchedProducts] = await Promise.all([
+      prisma.style.findMany({
+        take: 3,
+        orderBy: { createdAt: "desc" },
+        include: { items: { include: { product: true } } },
+      }),
+      prisma.product.findMany({ take: 4, orderBy: { createdAt: "desc" } }),
+    ]);
+    outfits = fetchedOutfits as unknown as Style[];
+    products = fetchedProducts as unknown as Product[];
+  } catch {
+    // DB may still be initialising on first boot — render the page without data
+  }
 
   return (
     <>
       <HeroSection />
       <OutfitCategories />
-      <FeaturedOutfits outfits={outfits as unknown as Style[]} />
+      <FeaturedOutfits outfits={outfits} />
       <ProductCategories />
-      <TrendingProducts products={products as unknown as Product[]} />
+      <TrendingProducts products={products} />
       <ShopTheLookBanner />
     </>
   );
