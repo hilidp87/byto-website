@@ -4,7 +4,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import LookHotspots from "@/components/look/LookHotspots";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 function formatToman(price: number): string {
   return `${price.toLocaleString("fa-IR")} تومان`;
