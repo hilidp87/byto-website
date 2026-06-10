@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { isR2Configured, uploadToR2 } from "@/lib/r2";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
@@ -34,10 +35,21 @@ export async function POST(request: NextRequest) {
 
   const ext = file.type.split("/")[1].replace("jpeg", "jpg");
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const buffer = Buffer.from(bytes);
+
+  if (isR2Configured()) {
+    try {
+      const url = await uploadToR2(`uploads/${filename}`, buffer, file.type);
+      return NextResponse.json({ url });
+    } catch (err) {
+      console.error("R2 upload failed:", err);
+      return NextResponse.json({ error: "آپلود به فضای ابری ناموفق بود" }, { status: 500 });
+    }
+  }
+
+  // Fallback: local filesystem (ephemeral on Railway — set R2 env vars for persistence)
   const uploadsDir = path.join(process.cwd(), "public", "uploads");
-
   await mkdir(uploadsDir, { recursive: true });
-  await writeFile(path.join(uploadsDir, filename), Buffer.from(bytes));
-
+  await writeFile(path.join(uploadsDir, filename), buffer);
   return NextResponse.json({ url: `/uploads/${filename}` });
 }
