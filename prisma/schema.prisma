@@ -67,6 +67,75 @@ model Product {
   styleItems  StyleItem[]
   wishlistItems WishlistItem[]
   orderItems  OrderItem[]
+  views       ProductView[]
+  hotspots    LookHotspot[]
+}
+
+model Look {
+  id          String        @id @default(cuid())
+  title       String
+  description String?       @db.Text
+  image       String
+  active      Boolean       @default(true)
+  totalClicks Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  hotspots    LookHotspot[]
+}
+
+model LookHotspot {
+  id          String           @id @default(cuid())
+  lookId      String
+  productId   String
+  x           Float
+  y           Float
+  label       String?
+  clicks      Int              @default(0)
+  look        Look             @relation(fields: [lookId], references: [id], onDelete: Cascade)
+  product     Product          @relation(fields: [productId], references: [id])
+  clicks_log  HotspotClick[]
+  conversions LookConversion[]
+}
+
+model HotspotClick {
+  id        String      @id @default(cuid())
+  hotspotId String
+  createdAt DateTime    @default(now())
+  hotspot   LookHotspot @relation(fields: [hotspotId], references: [id], onDelete: Cascade)
+}
+
+model LookConversion {
+  id        String      @id @default(cuid())
+  hotspotId String
+  orderId   String
+  createdAt DateTime    @default(now())
+  hotspot   LookHotspot @relation(fields: [hotspotId], references: [id], onDelete: Cascade)
+}
+
+model HomepageBanner {
+  id        String   @id @default(cuid())
+  title     String
+  subtitle  String?
+  image     String
+  link      String?
+  position  Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model HomepageSection {
+  id       String  @id @default(cuid())
+  type     String
+  label    String
+  position Int     @default(0)
+  active   Boolean @default(true)
+}
+
+model ProductView {
+  id        String   @id @default(cuid())
+  productId String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model Style {
