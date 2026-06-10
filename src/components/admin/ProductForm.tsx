@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ImageUpload from "@/components/admin/ImageUpload";
 
 const CATEGORIES = [
   "Pants",
@@ -268,15 +269,14 @@ export default function ProductForm({
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold text-gray-900">Images (URLs)</h3>
-        <div className="space-y-3">
+        <h3 className="mb-4 text-sm font-semibold text-gray-900">Images</h3>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
           {form.images.map((img, idx) => (
-            <input
+            <ImageUpload
               key={idx}
-              className={inputCls}
-              placeholder={`Image URL ${idx + 1}`}
               value={img}
-              onChange={(e) => setImage(idx, e.target.value)}
+              onChange={(url) => setImage(idx, url)}
+              label={`Image ${idx + 1}`}
             />
           ))}
         </div>
