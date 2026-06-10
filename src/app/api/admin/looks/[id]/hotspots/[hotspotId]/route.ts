@@ -4,6 +4,23 @@ import { isAdminAuthenticated } from "@/lib/admin-auth";
 
 type Ctx = { params: Promise<{ id: string; hotspotId: string }> };
 
+export async function PATCH(request: NextRequest, ctx: Ctx) {
+  if (!(await isAdminAuthenticated())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { hotspotId } = await ctx.params;
+  const { x, y } = await request.json();
+  try {
+    const updated = await prisma.lookHotspot.update({
+      where: { id: hotspotId },
+      data: { x, y },
+    });
+    return NextResponse.json(updated);
+  } catch {
+    return NextResponse.json({ error: "هات‌اسپات یافت نشد" }, { status: 404 });
+  }
+}
+
 export async function DELETE(_request: NextRequest, ctx: Ctx) {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
