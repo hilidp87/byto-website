@@ -9,6 +9,7 @@ import {
   ArrowDownIcon,
   Bars3Icon,
 } from "@heroicons/react/24/outline";
+import ImageUpload from "@/components/admin/ImageUpload";
 
 type Banner = {
   id: string;
@@ -381,18 +382,11 @@ export default function ContentPage() {
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none"
               />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                آدرس تصویر
-              </label>
-              <input
-                type="url"
-                dir="ltr"
-                value={form.image}
-                onChange={(e) => setForm({ ...form, image: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none"
-              />
-            </div>
+            <ImageUpload
+              label="تصویر بنر"
+              value={form.image}
+              onChange={(url) => setForm({ ...form, image: url })}
+            />
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">لینک</label>
               <input

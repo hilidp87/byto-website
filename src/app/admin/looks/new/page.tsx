@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ImageUpload from "@/components/admin/ImageUpload";
 
 export default function NewLookPage() {
   const router = useRouter();
@@ -65,28 +66,7 @@ export default function NewLookPage() {
           />
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">آدرس تصویر</label>
-          <input
-            type="url"
-            value={image}
-            onChange={(e) => setImage(e.target.value)}
-            dir="ltr"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none"
-          />
-        </div>
-
-        {image && (
-          <div>
-            <p className="mb-1 text-sm font-medium text-gray-700">پیش‌نمایش</p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={image}
-              alt="پیش‌نمایش"
-              className="max-h-64 rounded-lg border border-gray-200 object-cover"
-            />
-          </div>
-        )}
+        <ImageUpload label="تصویر لوک" value={image} onChange={setImage} />
 
         <button
           type="submit"
