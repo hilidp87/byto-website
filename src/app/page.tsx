@@ -30,6 +30,7 @@ export default async function HomePage() {
         where: { active: true },
         take: 5,
         orderBy: { createdAt: "desc" },
+        include: { hotspots: { include: { product: true }, take: 2 } },
       }),
     ]);
     outfits = fetchedOutfits as unknown as Style[];
@@ -40,6 +41,9 @@ export default async function HomePage() {
       description: l.description,
       image: l.image,
       href: `/looks/${l.id}`,
+      garments: l.hotspots
+        .map((h) => h.product.images?.[0])
+        .filter((img): img is string => Boolean(img)),
     }));
   } catch {
     // DB may still be initialising on first boot — render the page without data
