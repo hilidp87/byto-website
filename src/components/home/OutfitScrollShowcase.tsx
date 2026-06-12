@@ -260,6 +260,41 @@ function DotIndicator({
   );
 }
 
+function CounterItem({
+  index,
+  total,
+  progress,
+}: {
+  index: number;
+  total: number;
+  progress: MotionValue<number>;
+}) {
+  const start = index / total;
+  const end = (index + 1) / total;
+  const fadeDur = 0.08 / total;
+  const opacity = useTransform(
+    progress,
+    index === 0
+      ? [0, end - fadeDur, end]
+      : index === total - 1
+        ? [start, start + fadeDur, 1]
+        : [start, start + fadeDur, end - fadeDur, end],
+    index === 0
+      ? [1, 1, 0]
+      : index === total - 1
+        ? [0, 1, 1]
+        : [0, 1, 1, 0]
+  );
+  return (
+    <motion.p
+      style={{ opacity }}
+      className="absolute text-xs font-semibold uppercase tracking-widest text-gray-700"
+    >
+      {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+    </motion.p>
+  );
+}
+
 function LookCounter({
   total,
   progress,
@@ -271,29 +306,9 @@ function LookCounter({
 }) {
   return (
     <div className="absolute left-5 top-6 z-30 space-y-0.5">
-      {outfits.map((_, i) => {
-        const start = i / total;
-        const end = (i + 1) / total;
-        const fadeDur = 0.08 / total;
-        const opacity = useTransform(
-          progress,
-          i === 0
-            ? [0, end - fadeDur, end]
-            : i === total - 1
-              ? [start, start + fadeDur, 1]
-              : [start, start + fadeDur, end - fadeDur, end],
-          i === 0
-            ? [1, 1, 0]
-            : i === total - 1
-              ? [0, 1, 1]
-              : [0, 1, 1, 0]
-        );
-        return (
-          <motion.p key={i} style={{ opacity }} className="absolute text-xs font-semibold uppercase tracking-widest text-gray-700">
-            {String(i + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
-          </motion.p>
-        );
-      })}
+      {outfits.map((_, i) => (
+        <CounterItem key={i} index={i} total={total} progress={progress} />
+      ))}
     </div>
   );
 }
