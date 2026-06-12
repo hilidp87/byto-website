@@ -30,18 +30,18 @@ const OUTFITS: Outfit[] = [
   },
   {
     id: "2",
-    title: "Denim Dream",
-    subtitle: "Lace bralette · wide-leg baggy jeans",
-    top: "/outfits/outfit-2-top.png",
-    bottom: "/outfits/outfit-2-bottom.png",
-    href: "/looks",
-  },
-  {
-    id: "3",
     title: "Street Minimal",
     subtitle: "Black crop tee · wide-leg baggy jeans",
     top: "/outfits/outfit-3-top.png",
     bottom: "/outfits/outfit-3-bottom.png",
+    href: "/looks",
+  },
+  {
+    id: "3",
+    title: "Denim Dream",
+    subtitle: "Lace bralette · wide-leg baggy jeans",
+    top: "/outfits/outfit-2-top.png",
+    bottom: "/outfits/outfit-2-bottom.png",
     href: "/looks",
   },
 ];
