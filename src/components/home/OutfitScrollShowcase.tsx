@@ -85,7 +85,7 @@ function OutfitLayer({
       <img
         src={outfit.outfitImage}
         alt={outfit.title}
-        className="absolute inset-0 z-10 h-full w-full select-none object-contain object-center"
+        className="absolute inset-0 h-full w-full select-none object-contain object-center"
         draggable={false}
         loading={index === 0 ? "eager" : "lazy"}
       />
