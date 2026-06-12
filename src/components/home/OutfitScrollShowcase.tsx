@@ -69,23 +69,23 @@ function OutfitLayer({
   return (
     <motion.div
       style={{ opacity }}
-      className="pointer-events-none absolute inset-0 flex items-end justify-center"
+      className="pointer-events-none absolute inset-0"
     >
-      {/* Model base — included per-layer so it's always under its outfit */}
+      {/* Model base — full-size box, object-contain keeps it centered */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/outfits/model.png"
         alt=""
-        className="absolute inset-0 h-full w-auto select-none object-contain"
+        className="absolute inset-0 h-full w-full select-none object-contain object-center"
         draggable={false}
         aria-hidden
       />
-      {/* Outfit clothes on top of model */}
+      {/* Outfit clothes — identical box, so it aligns perfectly over the model */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={outfit.outfitImage}
         alt={outfit.title}
-        className="relative z-10 h-full w-auto select-none object-contain"
+        className="absolute inset-0 z-10 h-full w-full select-none object-contain object-center"
         draggable={false}
         loading={index === 0 ? "eager" : "lazy"}
       />
@@ -157,8 +157,8 @@ function ScrollBar({ progress }: { progress: MotionValue<number> }) {
   );
 }
 
-export function OutfitScrollShowcase({ looks }: { looks?: ShowcaseLook[] }) {
-  const outfits = (looks && looks.length >= 1 ? looks : OUTFITS);
+export function OutfitScrollShowcase() {
+  const outfits = OUTFITS;
   const total = outfits.length;
   const containerRef = useRef<HTMLDivElement>(null);
 
