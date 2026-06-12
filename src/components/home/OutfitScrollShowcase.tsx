@@ -36,7 +36,7 @@ const OUTFITS: ShowcaseLook[] = [
   },
 ];
 
-/** Outfit layer crossfades on top of the base model */
+/** Outfit layer: model base + outfit clothes crossfade together */
 function OutfitLayer({
   outfit,
   index,
@@ -71,12 +71,23 @@ function OutfitLayer({
       style={{ opacity }}
       className="pointer-events-none absolute inset-0 flex items-end justify-center"
     >
+      {/* Model base — included per-layer so it's always under its outfit */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/outfits/model.png"
+        alt=""
+        className="absolute inset-0 h-full w-auto select-none object-contain"
+        draggable={false}
+        aria-hidden
+      />
+      {/* Outfit clothes on top of model */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={outfit.outfitImage}
         alt={outfit.title}
-        className="h-full w-auto select-none object-contain"
+        className="relative z-10 h-full w-auto select-none object-contain"
         draggable={false}
+        loading={index === 0 ? "eager" : "lazy"}
       />
     </motion.div>
   );
@@ -172,19 +183,8 @@ export function OutfitScrollShowcase({ looks }: { looks?: ShowcaseLook[] }) {
             "radial-gradient(ellipse 80% 90% at 50% 60%, #f5c6ea 0%, #f0aadf 35%, #e879cf 70%, #d95ec0 100%)",
         }}
       >
-        {/* Base model — always visible */}
-        <div className="absolute inset-0 flex items-end justify-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/outfits/model.png"
-            alt="model"
-            className="h-full w-auto select-none object-contain"
-            draggable={false}
-          />
-        </div>
-
-        {/* Outfit layers stacked on top */}
-        <div className="absolute inset-0">
+        {/* Outfit layers — each one includes the model base + clothes */}
+        <div className="absolute inset-0 z-10">
           {outfits.map((outfit, i) => (
             <OutfitLayer
               key={outfit.id}
