@@ -7,72 +7,58 @@ import { motion, useScroll, useTransform, type MotionValue } from "framer-motion
 export type ShowcaseLook = {
   id: string;
   title: string;
-  description: string | null;
-  image: string;
+  subtitle?: string;
+  outfitImage: string;
   href: string;
-  /** garment cutout images shown sliding beside the model */
-  garments: string[];
 };
 
-const FALLBACK_LOOKS: ShowcaseLook[] = [
+const OUTFITS: ShowcaseLook[] = [
   {
-    id: "f1",
-    title: "Street Casual",
-    description: "Effortless layers for the everyday city pace.",
-    image: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=900&q=80",
-    href: "/outfits",
-    garments: [
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&q=80",
-      "https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&q=80",
-    ],
+    id: "1",
+    title: "Campus Cool",
+    subtitle: "White cardigan · crop tank · tailored shorts",
+    outfitImage: "/outfits/outfit-1.png",
+    href: "/looks",
   },
   {
-    id: "f2",
-    title: "Smart Office",
-    description: "Tailored lines that move from meeting to evening.",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=900&q=80",
-    href: "/outfits",
-    garments: [
-      "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400&q=80",
-      "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=400&q=80",
-    ],
+    id: "2",
+    title: "Denim Dream",
+    subtitle: "Lace bralette · wide-leg baggy jeans",
+    outfitImage: "/outfits/outfit-2.png",
+    href: "/looks",
   },
   {
-    id: "f3",
-    title: "Weekend Edit",
-    description: "Soft textures and easy fits, built for slow days.",
-    image: "https://images.unsplash.com/photo-1485968579580-b6d095142e6e?w=900&q=80",
-    href: "/outfits",
-    garments: [
-      "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=400&q=80",
-      "https://images.unsplash.com/photo-1584370848010-d7fe6bc767ec?w=400&q=80",
-    ],
+    id: "3",
+    title: "Street Minimal",
+    subtitle: "Black crop tee · wide-leg baggy jeans",
+    outfitImage: "/outfits/outfit-3.png",
+    href: "/looks",
   },
 ];
 
-/** Center model image: crossfades between looks at slice boundaries */
-function CenterModel({
-  look,
+/** Outfit layer crossfades on top of the base model */
+function OutfitLayer({
+  outfit,
   index,
   total,
   progress,
 }: {
-  look: ShowcaseLook;
+  outfit: ShowcaseLook;
   index: number;
   total: number;
   progress: MotionValue<number>;
 }) {
-  const sliceStart = index / total;
-  const sliceEnd = (index + 1) / total;
-  const fade = 0.1 / total;
+  const start = index / total;
+  const end = (index + 1) / total;
+  const fadeDur = 0.08 / total;
 
   const opacity = useTransform(
     progress,
     index === 0
-      ? [0, sliceEnd - fade, sliceEnd]
+      ? [0, end - fadeDur, end]
       : index === total - 1
-        ? [sliceStart, sliceStart + fade, 1]
-        : [sliceStart, sliceStart + fade, sliceEnd - fade, sliceEnd],
+        ? [start, start + fadeDur, 1]
+        : [start, start + fadeDur, end - fadeDur, end],
     index === 0
       ? [1, 1, 0]
       : index === total - 1
@@ -81,58 +67,68 @@ function CenterModel({
   );
 
   return (
-    <motion.div style={{ opacity }} className="absolute inset-0 flex items-end justify-center">
+    <motion.div
+      style={{ opacity }}
+      className="pointer-events-none absolute inset-0 flex items-end justify-center"
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={look.image}
-        alt={look.title}
-        className="h-[78vh] w-auto select-none object-contain drop-shadow-2xl"
+        src={outfit.outfitImage}
+        alt={outfit.title}
+        className="h-full w-auto select-none object-contain"
         draggable={false}
       />
     </motion.div>
   );
 }
 
-/** Caption (title + CTA) synced to active look */
-function Caption({
-  look,
+/** Outfit label + CTA that swaps in sync */
+function OutfitCaption({
+  outfit,
   index,
   total,
   progress,
 }: {
-  look: ShowcaseLook;
+  outfit: ShowcaseLook;
   index: number;
   total: number;
   progress: MotionValue<number>;
 }) {
-  const sliceStart = index / total;
-  const sliceEnd = (index + 1) / total;
-  const fade = 0.1 / total;
+  const start = index / total;
+  const end = (index + 1) / total;
+  const fadeDur = 0.08 / total;
 
   const opacity = useTransform(
     progress,
     index === 0
-      ? [0, sliceEnd - fade, sliceEnd]
+      ? [0, end - fadeDur, end]
       : index === total - 1
-        ? [sliceStart, sliceStart + fade, 1]
-        : [sliceStart, sliceStart + fade, sliceEnd - fade, sliceEnd],
+        ? [start, start + fadeDur, 1]
+        : [start, start + fadeDur, end - fadeDur, end],
     index === 0
       ? [1, 1, 0]
       : index === total - 1
         ? [0, 1, 1]
         : [0, 1, 1, 0]
   );
-  const y = useTransform(progress, [sliceStart, sliceStart + fade], [16, 0]);
+  const y = useTransform(progress, [start, start + fadeDur], [20, 0]);
 
   return (
     <motion.div
       style={{ opacity, y }}
-      className="pointer-events-none absolute bottom-8 left-1/2 z-20 w-full max-w-md -translate-x-1/2 text-center"
+      className="absolute bottom-10 left-0 right-0 z-20 flex flex-col items-center gap-3 px-4 text-center"
     >
-      <h3 className="font-serif text-2xl font-bold text-ink sm:text-3xl">{look.title}</h3>
+      <div>
+        <p className="font-serif text-2xl font-bold text-gray-900 sm:text-3xl">
+          {outfit.title}
+        </p>
+        {outfit.subtitle && (
+          <p className="mt-1 text-sm text-gray-500">{outfit.subtitle}</p>
+        )}
+      </div>
       <Link
-        href={look.href}
-        className="pointer-events-auto mt-3 inline-flex items-center gap-2 rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-ink/80"
+        href={outfit.href}
+        className="inline-flex items-center gap-2 rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-700"
       >
         Shop This Look <span aria-hidden>→</span>
       </Link>
@@ -140,9 +136,19 @@ function Caption({
   );
 }
 
+/** Scroll progress bar at the bottom */
+function ScrollBar({ progress }: { progress: MotionValue<number> }) {
+  const scaleX = useTransform(progress, [0, 1], [0, 1]);
+  return (
+    <div className="absolute bottom-0 left-0 right-0 z-30 h-[2px] bg-black/10">
+      <motion.div style={{ scaleX, originX: 0 }} className="h-full bg-gray-900" />
+    </div>
+  );
+}
+
 export function OutfitScrollShowcase({ looks }: { looks?: ShowcaseLook[] }) {
-  const data = looks && looks.length >= 2 ? looks.slice(0, 5) : FALLBACK_LOOKS;
-  const total = data.length;
+  const outfits = (looks && looks.length >= 1 ? looks : OUTFITS);
+  const total = outfits.length;
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { scrollYProgress } = useScroll({
@@ -150,14 +156,8 @@ export function OutfitScrollShowcase({ looks }: { looks?: ShowcaseLook[] }) {
     offset: ["start start", "end end"],
   });
 
-  // Garment strip: one slot pair (left + right of the model) per look.
-  // The whole strip slides left as you scroll, so garments glide past the model
-  // exactly when her outfit changes.
-  const stripX = useTransform(
-    scrollYProgress,
-    [0, 1],
-    ["0vw", `-${(total - 1) * 100}vw`]
-  );
+  // Dot index driven by scroll
+  const activeIndex = useTransform(scrollYProgress, [0, 0.999], [0, total - 1]);
 
   return (
     <section
@@ -169,55 +169,26 @@ export function OutfitScrollShowcase({ looks }: { looks?: ShowcaseLook[] }) {
         className="sticky top-0 h-screen overflow-hidden"
         style={{
           background:
-            "radial-gradient(ellipse at center, #f6d5f0 0%, #f0aee4 45%, #e879d8 100%)",
+            "radial-gradient(ellipse 80% 90% at 50% 60%, #f5c6ea 0%, #f0aadf 35%, #e879cf 70%, #d95ec0 100%)",
         }}
       >
-        {/* sliding garment strip (behind the model) */}
-        <motion.div
-          style={{ x: stripX }}
-          className="absolute inset-y-0 left-0 z-0 flex"
-        >
-          {data.map((look) => (
-            <div
-              key={look.id}
-              className="flex h-full w-screen shrink-0 items-center justify-between px-[6vw]"
-            >
-              {/* left garment */}
-              <div className="hidden w-[22vw] max-w-xs sm:block">
-                {look.garments[0] && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={look.garments[0]}
-                    alt=""
-                    className="max-h-[55vh] w-full select-none object-contain drop-shadow-xl"
-                    draggable={false}
-                  />
-                )}
-              </div>
-              {/* center gap where the model stands */}
-              <div className="w-[28vw]" />
-              {/* right garment */}
-              <div className="hidden w-[22vw] max-w-xs sm:block">
-                {look.garments[1] && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={look.garments[1]}
-                    alt=""
-                    className="max-h-[55vh] w-full select-none object-contain drop-shadow-xl"
-                    draggable={false}
-                  />
-                )}
-              </div>
-            </div>
-          ))}
-        </motion.div>
+        {/* Base model — always visible */}
+        <div className="absolute inset-0 flex items-end justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/outfits/model.png"
+            alt="model"
+            className="h-full w-auto select-none object-contain"
+            draggable={false}
+          />
+        </div>
 
-        {/* fixed center model, crossfading between looks */}
-        <div className="absolute inset-0 z-10">
-          {data.map((look, i) => (
-            <CenterModel
-              key={look.id}
-              look={look}
+        {/* Outfit layers stacked on top */}
+        <div className="absolute inset-0">
+          {outfits.map((outfit, i) => (
+            <OutfitLayer
+              key={outfit.id}
+              outfit={outfit}
               index={i}
               total={total}
               progress={scrollYProgress}
@@ -225,22 +196,121 @@ export function OutfitScrollShowcase({ looks }: { looks?: ShowcaseLook[] }) {
           ))}
         </div>
 
-        {/* captions */}
-        {data.map((look, i) => (
-          <Caption
-            key={look.id}
-            look={look}
+        {/* Captions */}
+        {outfits.map((outfit, i) => (
+          <OutfitCaption
+            key={outfit.id}
+            outfit={outfit}
             index={i}
             total={total}
             progress={scrollYProgress}
           />
         ))}
 
-        {/* scroll hint */}
-        <div className="absolute right-6 top-1/2 z-20 -translate-y-1/2 rotate-90 text-[11px] uppercase tracking-[0.3em] text-ink/50">
-          Scroll
+        {/* Dot navigation (right side) */}
+        <div className="absolute right-5 top-1/2 z-30 flex -translate-y-1/2 flex-col gap-2.5">
+          {outfits.map((_, i) => (
+            <DotIndicator
+              key={i}
+              index={i}
+              total={total}
+              progress={scrollYProgress}
+              activeIndex={activeIndex}
+            />
+          ))}
         </div>
+
+        {/* Look counter (top-left) */}
+        <LookCounter total={total} progress={scrollYProgress} outfits={outfits} />
+
+        {/* Scroll progress bar */}
+        <ScrollBar progress={scrollYProgress} />
+
+        {/* Scroll hint (only at very top) */}
+        <ScrollHint progress={scrollYProgress} />
       </div>
     </section>
+  );
+}
+
+function DotIndicator({
+  index,
+  total,
+  progress,
+}: {
+  index: number;
+  total: number;
+  progress: MotionValue<number>;
+  activeIndex: MotionValue<number>;
+}) {
+  const start = index / total;
+  const end = (index + 1) / total;
+  const size = useTransform(progress, [start, start + 0.05 / total, end - 0.05 / total, end], [8, 12, 12, 8]);
+  const opacity = useTransform(progress, [start, start + 0.05 / total, end - 0.05 / total, end], [0.3, 1, 1, 0.3]);
+
+  return (
+    <motion.span
+      style={{
+        width: size,
+        height: size,
+        opacity,
+      }}
+      className="rounded-full bg-gray-900 transition-all"
+    />
+  );
+}
+
+function LookCounter({
+  total,
+  progress,
+  outfits,
+}: {
+  total: number;
+  progress: MotionValue<number>;
+  outfits: ShowcaseLook[];
+}) {
+  return (
+    <div className="absolute left-5 top-6 z-30 space-y-0.5">
+      {outfits.map((_, i) => {
+        const start = i / total;
+        const end = (i + 1) / total;
+        const fadeDur = 0.08 / total;
+        const opacity = useTransform(
+          progress,
+          i === 0
+            ? [0, end - fadeDur, end]
+            : i === total - 1
+              ? [start, start + fadeDur, 1]
+              : [start, start + fadeDur, end - fadeDur, end],
+          i === 0
+            ? [1, 1, 0]
+            : i === total - 1
+              ? [0, 1, 1]
+              : [0, 1, 1, 0]
+        );
+        return (
+          <motion.p key={i} style={{ opacity }} className="absolute text-xs font-semibold uppercase tracking-widest text-gray-700">
+            {String(i + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+          </motion.p>
+        );
+      })}
+    </div>
+  );
+}
+
+function ScrollHint({ progress }: { progress: MotionValue<number> }) {
+  const opacity = useTransform(progress, [0, 0.06], [1, 0]);
+  return (
+    <motion.div
+      style={{ opacity }}
+      className="absolute bottom-16 left-1/2 z-30 -translate-x-1/2 flex flex-col items-center gap-1.5"
+    >
+      <span className="text-xs uppercase tracking-[0.3em] text-gray-600">Scroll</span>
+      <motion.div
+        animate={{ y: [0, 6, 0] }}
+        transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
+        className="h-5 w-px bg-gray-600"
+      />
+    </motion.div>
   );
 }

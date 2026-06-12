@@ -38,12 +38,9 @@ export default async function HomePage() {
     showcaseLooks = fetchedLooks.map((l) => ({
       id: l.id,
       title: l.title,
-      description: l.description,
-      image: l.image,
+      subtitle: l.description ?? undefined,
+      outfitImage: l.image,
       href: `/looks/${l.id}`,
-      garments: l.hotspots
-        .map((h) => h.product.images?.[0])
-        .filter((img): img is string => Boolean(img)),
     }));
   } catch {
     // DB may still be initialising on first boot — render the page without data
