@@ -302,8 +302,13 @@ export function OutfitScrollShowcase() {
   useEffect(() => {
     fetch("/api/outfit-positions")
       .then((r) => r.json())
-      .then((data: OutfitPositions) => setPositions(data))
-      .catch(() => {/* fall back to default full-canvas layout */});
+      .then((data: OutfitPositions) => {
+        console.log("[OutfitShowcase] positions loaded:", JSON.stringify(data));
+        setPositions(data);
+      })
+      .catch((err) => {
+        console.error("[OutfitShowcase] failed to load positions:", err);
+      });
   }, []);
 
   return (

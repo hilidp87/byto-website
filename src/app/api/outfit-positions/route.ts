@@ -24,7 +24,8 @@ export async function GET() {
       };
     }
     return NextResponse.json(result);
-  } catch {
+  } catch (err) {
+    console.error("[outfit-positions] DB error:", err);
     return NextResponse.json({});
   }
 }
