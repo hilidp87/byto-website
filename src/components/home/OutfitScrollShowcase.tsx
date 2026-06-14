@@ -10,19 +10,12 @@ import {
   type MotionValue,
 } from "framer-motion";
 
-type GarmentStyle = {
-  width: string;
-  top: string;
-};
-
 type Outfit = {
   id: string;
   title: string;
   subtitle: string;
   top: string;
   bottom: string;
-  topStyle: GarmentStyle;
-  bottomStyle: GarmentStyle;
   href: string;
 };
 
@@ -33,8 +26,6 @@ const OUTFITS: Outfit[] = [
     subtitle: "White cardigan · crop tank · tailored shorts",
     top: "/outfits/outfit-1-top.png",
     bottom: "/outfits/outfit-1-bottom.png",
-    topStyle:    { width: "55%", top: "12%" },
-    bottomStyle: { width: "45%", top: "48%" },
     href: "/looks",
   },
   {
@@ -43,8 +34,6 @@ const OUTFITS: Outfit[] = [
     subtitle: "Black crop tee · wide-leg baggy jeans",
     top: "/outfits/outfit-3-top.png",
     bottom: "/outfits/outfit-3-bottom.png",
-    topStyle:    { width: "100%", top: "0%" },
-    bottomStyle: { width: "100%", top: "0%" },
     href: "/looks",
   },
   {
@@ -53,8 +42,6 @@ const OUTFITS: Outfit[] = [
     subtitle: "Lace bralette · wide-leg baggy jeans",
     top: "/outfits/outfit-2-top.png",
     bottom: "/outfits/outfit-2-bottom.png",
-    topStyle:    { width: "100%", top: "0%" },
-    bottomStyle: { width: "100%", top: "0%" },
     href: "/looks",
   },
 ];
@@ -106,17 +93,16 @@ function GarmentLayers({
 
   const topX    = useSpring(topXRaw,    { stiffness: 120, damping: 24 });
   const bottomX = useSpring(bottomXRaw, { stiffness: 120, damping: 24 });
-
-  // Compose centering (translateX -50%) with the slide animation so framer-motion
-  // doesn't fight a CSS transform: both live in the same transform string.
-  const topXTranslate    = useTransform(topX,    (v) => `calc(-50% + ${v}%)`);
-  const bottomXTranslate = useTransform(bottomX, (v) => `calc(-50% + ${v}%)`);
+  const topXPct    = useTransform(topX,    (v) => `${v}%`);
+  const bottomXPct = useTransform(bottomX, (v) => `${v}%`);
 
   const opacity = useTransform(
     progress,
     inputRange,
     first ? [1, 1, 0] : last ? [0, 1, 1] : [0, 1, 1, 0]
   );
+
+  const imgClass = "absolute inset-0 h-full w-full select-none object-contain object-center";
 
   return (
     <motion.div style={{ opacity }} className="pointer-events-none absolute inset-0">
@@ -126,15 +112,8 @@ function GarmentLayers({
         src={outfit.bottom}
         alt=""
         aria-hidden
-        style={{
-          x: bottomXTranslate,
-          position: "absolute",
-          left: "50%",
-          top: outfit.bottomStyle.top,
-          width: outfit.bottomStyle.width,
-          height: "auto",
-        }}
-        className="select-none"
+        style={{ x: bottomXPct }}
+        className={imgClass}
         draggable={false}
         loading={first ? "eager" : "lazy"}
       />
@@ -143,15 +122,8 @@ function GarmentLayers({
       <motion.img
         src={outfit.top}
         alt={outfit.title}
-        style={{
-          x: topXTranslate,
-          position: "absolute",
-          left: "50%",
-          top: outfit.topStyle.top,
-          width: outfit.topStyle.width,
-          height: "auto",
-        }}
-        className="select-none"
+        style={{ x: topXPct }}
+        className={imgClass}
         draggable={false}
         loading={first ? "eager" : "lazy"}
       />
