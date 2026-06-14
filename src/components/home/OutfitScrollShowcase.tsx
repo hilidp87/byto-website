@@ -10,11 +10,19 @@ import {
   type MotionValue,
 } from "framer-motion";
 
+type GarmentStyle = {
+  width: string;
+  top: string;
+};
+
 type Outfit = {
   id: string;
   title: string;
   subtitle: string;
-  src: string;
+  top: string;
+  bottom: string;
+  topStyle: GarmentStyle;
+  bottomStyle: GarmentStyle;
   href: string;
 };
 
@@ -23,21 +31,30 @@ const OUTFITS: Outfit[] = [
     id: "1",
     title: "Campus Cool",
     subtitle: "White cardigan · crop tank · tailored shorts",
-    src: "/outfits/outfit-1.png",
+    top: "/outfits/outfit-1-top.png",
+    bottom: "/outfits/outfit-1-bottom.png",
+    topStyle:    { width: "55%", top: "12%" },
+    bottomStyle: { width: "45%", top: "48%" },
     href: "/looks",
   },
   {
     id: "2",
     title: "Street Minimal",
     subtitle: "Black crop tee · wide-leg baggy jeans",
-    src: "/outfits/outfit-3.png",
+    top: "/outfits/outfit-3-top.png",
+    bottom: "/outfits/outfit-3-bottom.png",
+    topStyle:    { width: "100%", top: "0%" },
+    bottomStyle: { width: "100%", top: "0%" },
     href: "/looks",
   },
   {
     id: "3",
     title: "Denim Dream",
     subtitle: "Lace bralette · wide-leg baggy jeans",
-    src: "/outfits/outfit-2.png",
+    top: "/outfits/outfit-2-top.png",
+    bottom: "/outfits/outfit-2-bottom.png",
+    topStyle:    { width: "100%", top: "0%" },
+    bottomStyle: { width: "100%", top: "0%" },
     href: "/looks",
   },
 ];
@@ -53,11 +70,11 @@ function slice(index: number) {
 }
 
 /**
- * Full composite image split by clip-path:
- * top half slides in from LEFT, bottom half from RIGHT.
- * model.png sits underneath as the fixed base — no masking needed.
+ * Garment layers: top slides in from LEFT, bottom from RIGHT.
+ * Each garment has its own width + vertical position so they can be
+ * fine-tuned independently without touching the animation logic.
  */
-function OutfitHalves({
+function GarmentLayers({
   outfit,
   index,
   progress,
@@ -89,8 +106,11 @@ function OutfitHalves({
 
   const topX    = useSpring(topXRaw,    { stiffness: 120, damping: 24 });
   const bottomX = useSpring(bottomXRaw, { stiffness: 120, damping: 24 });
-  const topXPct    = useTransform(topX,    (v) => `${v}%`);
-  const bottomXPct = useTransform(bottomX, (v) => `${v}%`);
+
+  // Compose centering (translateX -50%) with the slide animation so framer-motion
+  // doesn't fight a CSS transform: both live in the same transform string.
+  const topXTranslate    = useTransform(topX,    (v) => `calc(-50% + ${v}%)`);
+  const bottomXTranslate = useTransform(bottomX, (v) => `calc(-50% + ${v}%)`);
 
   const opacity = useTransform(
     progress,
@@ -98,29 +118,40 @@ function OutfitHalves({
     first ? [1, 1, 0] : last ? [0, 1, 1] : [0, 1, 1, 0]
   );
 
-  const imgClass =
-    "absolute inset-0 h-full w-full select-none object-contain object-center";
-
   return (
     <motion.div style={{ opacity }} className="pointer-events-none absolute inset-0">
-      {/* Top half — slides from the left */}
+      {/* Bottom garment — from the right */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <motion.img
-        src={outfit.src}
-        alt={outfit.title}
-        style={{ x: topXPct, clipPath: "inset(0 0 50% 0)" }}
-        className={imgClass}
+        src={outfit.bottom}
+        alt=""
+        aria-hidden
+        style={{
+          x: bottomXTranslate,
+          position: "absolute",
+          left: "50%",
+          top: outfit.bottomStyle.top,
+          width: outfit.bottomStyle.width,
+          height: "auto",
+        }}
+        className="select-none"
         draggable={false}
         loading={first ? "eager" : "lazy"}
       />
-      {/* Bottom half — slides from the right */}
+      {/* Top garment — from the left, rendered on top */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <motion.img
-        src={outfit.src}
-        alt=""
-        aria-hidden
-        style={{ x: bottomXPct, clipPath: "inset(50% 0 0 0)" }}
-        className={imgClass}
+        src={outfit.top}
+        alt={outfit.title}
+        style={{
+          x: topXTranslate,
+          position: "absolute",
+          left: "50%",
+          top: outfit.topStyle.top,
+          width: outfit.topStyle.width,
+          height: "auto",
+        }}
+        className="select-none"
         draggable={false}
         loading={first ? "eager" : "lazy"}
       />
@@ -276,10 +307,10 @@ export function OutfitScrollShowcase() {
           draggable={false}
         />
 
-        {/* Outfit halves: top from left, bottom from right */}
+        {/* Garment layers */}
         <div className="absolute inset-0 z-10">
           {OUTFITS.map((o, i) => (
-            <OutfitHalves key={o.id} outfit={o} index={i} progress={scrollYProgress} />
+            <GarmentLayers key={o.id} outfit={o} index={i} progress={scrollYProgress} />
           ))}
         </div>
 
