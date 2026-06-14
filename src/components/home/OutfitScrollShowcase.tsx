@@ -14,8 +14,7 @@ type Outfit = {
   id: string;
   title: string;
   subtitle: string;
-  top: string;
-  bottom: string;
+  src: string;
   href: string;
 };
 
@@ -24,33 +23,28 @@ const OUTFITS: Outfit[] = [
     id: "1",
     title: "Campus Cool",
     subtitle: "White cardigan · crop tank · tailored shorts",
-    top: "/outfits/outfit-1-top.png",
-    bottom: "/outfits/outfit-1-bottom.png",
+    src: "/outfits/outfit-1.png",
     href: "/looks",
   },
   {
     id: "2",
     title: "Street Minimal",
     subtitle: "Black crop tee · wide-leg baggy jeans",
-    top: "/outfits/outfit-3-top.png",
-    bottom: "/outfits/outfit-3-bottom.png",
+    src: "/outfits/outfit-3.png",
     href: "/looks",
   },
   {
     id: "3",
     title: "Denim Dream",
     subtitle: "Lace bralette · wide-leg baggy jeans",
-    top: "/outfits/outfit-2-top.png",
-    bottom: "/outfits/outfit-2-bottom.png",
+    src: "/outfits/outfit-2.png",
     href: "/looks",
   },
 ];
 
 const TOTAL = OUTFITS.length;
-/** fraction of each outfit's slice spent on the slide-in / slide-out transition */
 const T = 0.25;
 
-/** Per-outfit slice boundaries of the global scroll progress */
 function slice(index: number) {
   const start = index / TOTAL;
   const end = (index + 1) / TOTAL;
@@ -58,8 +52,12 @@ function slice(index: number) {
   return { start, end, enterEnd: start + span * T, exitStart: end - span * T };
 }
 
-/** Top garment slides in from the LEFT, bottom from the RIGHT */
-function GarmentLayers({
+/**
+ * Full composite image split by clip-path:
+ * top half slides in from LEFT, bottom half from RIGHT.
+ * model.png sits underneath as the fixed base — no masking needed.
+ */
+function OutfitHalves({
   outfit,
   index,
   progress,
@@ -72,66 +70,57 @@ function GarmentLayers({
   const first = index === 0;
   const last = index === TOTAL - 1;
 
-  // raw x-position percentages, then smoothed with a spring
+  const inputRange = first
+    ? [start, exitStart, end]
+    : last
+      ? [start, enterEnd, end]
+      : [start, enterEnd, exitStart, end];
+
   const topXRaw = useTransform(
     progress,
-    first
-      ? [start, exitStart, end]
-      : last
-        ? [start, enterEnd, end]
-        : [start, enterEnd, exitStart, end],
-    first
-      ? [0, 0, -100]
-      : last
-        ? [-100, 0, 0]
-        : [-100, 0, 0, -100]
+    inputRange,
+    first ? [0, 0, -100] : last ? [-100, 0, 0] : [-100, 0, 0, -100]
   );
   const bottomXRaw = useTransform(
     progress,
-    first
-      ? [start, exitStart, end]
-      : last
-        ? [start, enterEnd, end]
-        : [start, enterEnd, exitStart, end],
-    first
-      ? [0, 0, 100]
-      : last
-        ? [100, 0, 0]
-        : [100, 0, 0, 100]
+    inputRange,
+    first ? [0, 0, 100] : last ? [100, 0, 0] : [100, 0, 0, 100]
   );
-  const topX = useSpring(topXRaw, { stiffness: 120, damping: 24 });
+
+  const topX    = useSpring(topXRaw,    { stiffness: 120, damping: 24 });
   const bottomX = useSpring(bottomXRaw, { stiffness: 120, damping: 24 });
-  const topXPct = useTransform(topX, (v) => `${v}%`);
+  const topXPct    = useTransform(topX,    (v) => `${v}%`);
   const bottomXPct = useTransform(bottomX, (v) => `${v}%`);
 
   const opacity = useTransform(
     progress,
-    first
-      ? [start, exitStart, end]
-      : last
-        ? [start, enterEnd, end]
-        : [start, enterEnd, exitStart, end],
+    inputRange,
     first ? [1, 1, 0] : last ? [0, 1, 1] : [0, 1, 1, 0]
   );
 
+  const imgClass =
+    "absolute inset-0 h-full w-full select-none object-contain object-center";
+
   return (
     <motion.div style={{ opacity }} className="pointer-events-none absolute inset-0">
-      {/* bottom garment — from the right, under the top */}
+      {/* Top half — slides from the left */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <motion.img
-        src={outfit.bottom}
-        alt=""
-        aria-hidden
-        style={{ x: bottomXPct }}
-        className="absolute inset-0 h-full w-full select-none object-contain object-center"
+        src={outfit.src}
+        alt={outfit.title}
+        style={{ x: topXPct, clipPath: "inset(0 0 50% 0)" }}
+        className={imgClass}
         draggable={false}
         loading={first ? "eager" : "lazy"}
       />
-      {/* top garment — from the left, over the bottom */}
+      {/* Bottom half — slides from the right */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <motion.img
-        src={outfit.top}
-        alt={outfit.title}
-        style={{ x: topXPct }}
-        className="absolute inset-0 h-full w-full select-none object-contain object-center"
+        src={outfit.src}
+        alt=""
+        aria-hidden
+        style={{ x: bottomXPct, clipPath: "inset(50% 0 0 0)" }}
+        className={imgClass}
         draggable={false}
         loading={first ? "eager" : "lazy"}
       />
@@ -139,7 +128,6 @@ function GarmentLayers({
   );
 }
 
-/** Outfit name, subtitle, CTA — fades in below the model per outfit */
 function Caption({
   outfit,
   index,
@@ -185,7 +173,6 @@ function Caption({
   );
 }
 
-/** 01 / 03 counter, top-left */
 function CounterItem({
   index,
   progress,
@@ -215,7 +202,6 @@ function CounterItem({
   );
 }
 
-/** Right-side navigation dot */
 function Dot({ index, progress }: { index: number; progress: MotionValue<number> }) {
   const { start, end } = slice(index);
   const pad = 0.02;
@@ -237,7 +223,6 @@ function Dot({ index, progress }: { index: number; progress: MotionValue<number>
   );
 }
 
-/** "SCROLL" hint — fades out after the first scroll */
 function ScrollHint({ progress }: { progress: MotionValue<number> }) {
   const opacity = useTransform(progress, [0, 0.05], [1, 0]);
   return (
@@ -282,7 +267,7 @@ export function OutfitScrollShowcase() {
             "radial-gradient(ellipse 80% 90% at 50% 60%, #f6d3ee 0%, #f0aadf 40%, #e879cf 75%, #db63c2 100%)",
         }}
       >
-        {/* Fixed model — always visible under garments */}
+        {/* Base model — always visible, never moves */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/outfits/model.png"
@@ -291,10 +276,10 @@ export function OutfitScrollShowcase() {
           draggable={false}
         />
 
-        {/* Garment layers: tops from left, bottoms from right */}
+        {/* Outfit halves: top from left, bottom from right */}
         <div className="absolute inset-0 z-10">
           {OUTFITS.map((o, i) => (
-            <GarmentLayers key={o.id} outfit={o} index={i} progress={scrollYProgress} />
+            <OutfitHalves key={o.id} outfit={o} index={i} progress={scrollYProgress} />
           ))}
         </div>
 
