@@ -49,7 +49,7 @@ export default function StylesEditor() {
 
   // Load saved positions
   useEffect(() => {
-    fetch("/api/admin/styles")
+    fetch("/api/admin/outfit-positions")
       .then((r) => r.json())
       .then((data: Positions) => {
         setPositions(data);
@@ -179,7 +179,7 @@ export default function StylesEditor() {
     };
 
     try {
-      await fetch("/api/admin/styles", {
+      await fetch("/api/admin/outfit-positions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updated),

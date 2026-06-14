@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import {
   motion,
@@ -10,15 +10,14 @@ import {
   type MotionValue,
 } from "framer-motion";
 
-// ---- Types exported for page.tsx ----
+// ---- Types ----
 export type GarmentPos = {
-  x: string;      // e.g. "50%"  — horizontal center of the garment on canvas
-  y: string;      // e.g. "15%"  — top edge of the garment on canvas
-  width: string;  // e.g. "55%"
+  x: string;
+  y: string;
+  width: string;
   splitY?: number;
 };
 export type OutfitSlotData = {
-  src: string;
   top: GarmentPos;
   bottom: GarmentPos;
 };
@@ -77,18 +76,8 @@ function slice(index: number) {
   return { start, end, enterEnd: start + span * T, exitStart: end - span * T };
 }
 
-/**
- * Returns inline styles for a garment image given its saved position data.
- * Falls back to full-canvas layout when no position is saved.
- *
- * x in positions.json is the CENTRE of the garment (e.g. "50%").
- * CSS `left` = x - width/2 so the garment is centred at x.
- */
 function garmentStyle(pos: GarmentPos | undefined): React.CSSProperties {
-  if (!pos) {
-    // Default: fill entire canvas, let object-contain centre the PNG
-    return {};
-  }
+  if (!pos) return {};
   const xNum = parseFloat(pos.x);
   const wNum = parseFloat(pos.width);
   const leftPct = xNum - wNum / 2;
@@ -101,10 +90,8 @@ function garmentStyle(pos: GarmentPos | undefined): React.CSSProperties {
   };
 }
 
-/** Default class when no position saved — full canvas */
 const DEFAULT_IMG_CLASS =
   "absolute inset-0 h-full w-full select-none object-contain object-center";
-/** Class when position IS saved — img is sized by inline style */
 const POSITIONED_IMG_CLASS = "select-none";
 
 function GarmentLayers({
@@ -142,7 +129,6 @@ function GarmentLayers({
   const topSpring    = useSpring(topXRaw,    { stiffness: 120, damping: 24 });
   const bottomSpring = useSpring(bottomXRaw, { stiffness: 120, damping: 24 });
 
-  // Use vw units so the slide always goes fully off-screen regardless of garment size
   const topXVw    = useTransform(topSpring,    (v) => `${v}vw`);
   const bottomXVw = useTransform(bottomSpring, (v) => `${v}vw`);
 
@@ -158,7 +144,6 @@ function GarmentLayers({
 
   return (
     <motion.div style={{ opacity }} className="pointer-events-none absolute inset-0">
-      {/* Bottom garment — from the right */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <motion.img
         src={outfit.bottom}
@@ -169,7 +154,6 @@ function GarmentLayers({
         draggable={false}
         loading={first ? "eager" : "lazy"}
       />
-      {/* Top garment — from the left, rendered above */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <motion.img
         src={outfit.top}
@@ -306,12 +290,21 @@ function ProgressBar({ progress }: { progress: MotionValue<number> }) {
   );
 }
 
-export function OutfitScrollShowcase({ positions = {} }: { positions?: OutfitPositions }) {
+export function OutfitScrollShowcase() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"],
   });
+
+  const [positions, setPositions] = useState<OutfitPositions>({});
+
+  useEffect(() => {
+    fetch("/api/outfit-positions")
+      .then((r) => r.json())
+      .then((data: OutfitPositions) => setPositions(data))
+      .catch(() => {/* fall back to default full-canvas layout */});
+  }, []);
 
   return (
     <section ref={containerRef} className="relative h-[400vh]">

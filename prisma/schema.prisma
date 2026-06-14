@@ -204,3 +204,16 @@ model WishlistItem {
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   @@unique([userId, productId])
 }
+
+model OutfitPosition {
+  id           String   @id @default(cuid())
+  outfitId     String   @unique
+  topX         Float
+  topY         Float
+  topWidth     Float
+  splitY       Float
+  bottomX      Float
+  bottomY      Float
+  bottomWidth  Float
+  updatedAt    DateTime @updatedAt
+}
