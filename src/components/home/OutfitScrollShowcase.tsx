@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef } from "react";
 import Link from "next/link";
 import {
   motion,
@@ -10,29 +10,12 @@ import {
   type MotionValue,
 } from "framer-motion";
 
-// ---- Types ----
-export type GarmentPos = {
-  x: string;
-  y: string;
-  width: string;
-  splitY?: number;
-};
-export type OutfitSlotData = {
-  top: GarmentPos;
-  bottom: GarmentPos;
-};
-export type OutfitPositions = Partial<
-  Record<"outfit-1" | "outfit-2" | "outfit-3", OutfitSlotData>
->;
-
-// ---- Static outfit config ----
 type Outfit = {
   id: string;
   title: string;
   subtitle: string;
   top: string;
   bottom: string;
-  positionKey: "outfit-1" | "outfit-2" | "outfit-3";
   href: string;
 };
 
@@ -43,7 +26,6 @@ const OUTFITS: Outfit[] = [
     subtitle: "White cardigan · crop tank · tailored shorts",
     top: "/outfits/outfit-1-top.png",
     bottom: "/outfits/outfit-1-bottom.png",
-    positionKey: "outfit-1",
     href: "/looks",
   },
   {
@@ -52,7 +34,6 @@ const OUTFITS: Outfit[] = [
     subtitle: "Black crop tee · wide-leg baggy jeans",
     top: "/outfits/outfit-3-top.png",
     bottom: "/outfits/outfit-3-bottom.png",
-    positionKey: "outfit-3",
     href: "/looks",
   },
   {
@@ -61,14 +42,15 @@ const OUTFITS: Outfit[] = [
     subtitle: "Lace bralette · wide-leg baggy jeans",
     top: "/outfits/outfit-2-top.png",
     bottom: "/outfits/outfit-2-bottom.png",
-    positionKey: "outfit-2",
     href: "/looks",
   },
 ];
 
 const TOTAL = OUTFITS.length;
+/** fraction of each outfit's slice spent on the slide-in / slide-out transition */
 const T = 0.25;
 
+/** Per-outfit slice boundaries of the global scroll progress */
 function slice(index: number) {
   const start = index / TOTAL;
   const end = (index + 1) / TOTAL;
@@ -76,124 +58,88 @@ function slice(index: number) {
   return { start, end, enterEnd: start + span * T, exitStart: end - span * T };
 }
 
-// Mirrors exactly how StylesEditor.tsx renders the garment:
-// left = (garmentX - garmentW/2) / CANVAS_W * 100  →  x - width/2
-// top  = garmentY / CANVAS_H * 100
-// width = garmentW / CANVAS_W * 100
-// height: auto
-// No additional transform — the slide x (vw units) is applied separately by framer-motion.
-function positionedStyle(pos: GarmentPos): React.CSSProperties {
-  const xNum = parseFloat(pos.x);
-  const wNum = parseFloat(pos.width);
-  return {
-    position: "absolute",
-    left: `${(xNum - wNum / 2).toFixed(2)}%`,
-    top: pos.y,
-    width: pos.width,
-    height: "auto",
-  };
-}
-
-const DEFAULT_IMG_CLASS =
-  "absolute inset-0 h-full w-full select-none object-contain";
-const POSITIONED_IMG_CLASS = "select-none";
-
+/** Top garment slides in from the LEFT, bottom from the RIGHT */
 function GarmentLayers({
   outfit,
   index,
   progress,
-  positions,
 }: {
   outfit: Outfit;
   index: number;
   progress: MotionValue<number>;
-  positions: OutfitPositions;
 }) {
   const { start, end, enterEnd, exitStart } = slice(index);
   const first = index === 0;
   const last = index === TOTAL - 1;
 
-  const inputRange = first
-    ? [start, exitStart, end]
-    : last
-      ? [start, enterEnd, end]
-      : [start, enterEnd, exitStart, end];
-
+  // raw x-position percentages, then smoothed with a spring
   const topXRaw = useTransform(
     progress,
-    inputRange,
-    first ? [0, 0, -100] : last ? [-100, 0, 0] : [-100, 0, 0, -100]
+    first
+      ? [start, exitStart, end]
+      : last
+        ? [start, enterEnd, end]
+        : [start, enterEnd, exitStart, end],
+    first
+      ? [0, 0, -100]
+      : last
+        ? [-100, 0, 0]
+        : [-100, 0, 0, -100]
   );
   const bottomXRaw = useTransform(
     progress,
-    inputRange,
-    first ? [0, 0, 100] : last ? [100, 0, 0] : [100, 0, 0, 100]
+    first
+      ? [start, exitStart, end]
+      : last
+        ? [start, enterEnd, end]
+        : [start, enterEnd, exitStart, end],
+    first
+      ? [0, 0, 100]
+      : last
+        ? [100, 0, 0]
+        : [100, 0, 0, 100]
   );
-
-  const topSpring    = useSpring(topXRaw,    { stiffness: 120, damping: 24 });
-  const bottomSpring = useSpring(bottomXRaw, { stiffness: 120, damping: 24 });
-
-  const topXVw    = useTransform(topSpring,    (v) => `${v}vw`);
-  const bottomXVw = useTransform(bottomSpring, (v) => `${v}vw`);
+  const topX = useSpring(topXRaw, { stiffness: 120, damping: 24 });
+  const bottomX = useSpring(bottomXRaw, { stiffness: 120, damping: 24 });
+  const topXPct = useTransform(topX, (v) => `${v}%`);
+  const bottomXPct = useTransform(bottomX, (v) => `${v}%`);
 
   const opacity = useTransform(
     progress,
-    inputRange,
+    first
+      ? [start, exitStart, end]
+      : last
+        ? [start, enterEnd, end]
+        : [start, enterEnd, exitStart, end],
     first ? [1, 1, 0] : last ? [0, 1, 1] : [0, 1, 1, 0]
   );
 
-  const slotData = positions[outfit.positionKey];
-  const topPos    = slotData?.top;
-  const bottomPos = slotData?.bottom;
-
   return (
     <motion.div style={{ opacity }} className="pointer-events-none absolute inset-0">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {bottomPos ? (
-        <motion.img
-          src={outfit.bottom}
-          alt=""
-          aria-hidden
-          style={{ x: bottomXVw, ...positionedStyle(bottomPos) }}
-          className={POSITIONED_IMG_CLASS}
-          draggable={false}
-          loading={first ? "eager" : "lazy"}
-        />
-      ) : (
-        <motion.img
-          src={outfit.bottom}
-          alt=""
-          aria-hidden
-          style={{ x: bottomXVw }}
-          className={DEFAULT_IMG_CLASS}
-          draggable={false}
-          loading={first ? "eager" : "lazy"}
-        />
-      )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {topPos ? (
-        <motion.img
-          src={outfit.top}
-          alt={outfit.title}
-          style={{ x: topXVw, ...positionedStyle(topPos) }}
-          className={POSITIONED_IMG_CLASS}
-          draggable={false}
-          loading={first ? "eager" : "lazy"}
-        />
-      ) : (
-        <motion.img
-          src={outfit.top}
-          alt={outfit.title}
-          style={{ x: topXVw }}
-          className={DEFAULT_IMG_CLASS}
-          draggable={false}
-          loading={first ? "eager" : "lazy"}
-        />
-      )}
+      {/* bottom garment — from the right, under the top */}
+      <motion.img
+        src={outfit.bottom}
+        alt=""
+        aria-hidden
+        style={{ x: bottomXPct }}
+        className="absolute inset-0 h-full w-full select-none object-contain object-center"
+        draggable={false}
+        loading={first ? "eager" : "lazy"}
+      />
+      {/* top garment — from the left, over the bottom */}
+      <motion.img
+        src={outfit.top}
+        alt={outfit.title}
+        style={{ x: topXPct }}
+        className="absolute inset-0 h-full w-full select-none object-contain object-center"
+        draggable={false}
+        loading={first ? "eager" : "lazy"}
+      />
     </motion.div>
   );
 }
 
+/** Outfit name, subtitle, CTA — fades in below the model per outfit */
 function Caption({
   outfit,
   index,
@@ -239,6 +185,7 @@ function Caption({
   );
 }
 
+/** 01 / 03 counter, top-left */
 function CounterItem({
   index,
   progress,
@@ -268,6 +215,7 @@ function CounterItem({
   );
 }
 
+/** Right-side navigation dot */
 function Dot({ index, progress }: { index: number; progress: MotionValue<number> }) {
   const { start, end } = slice(index);
   const pad = 0.02;
@@ -289,6 +237,7 @@ function Dot({ index, progress }: { index: number; progress: MotionValue<number>
   );
 }
 
+/** "SCROLL" hint — fades out after the first scroll */
 function ScrollHint({ progress }: { progress: MotionValue<number> }) {
   const opacity = useTransform(progress, [0, 0.05], [1, 0]);
   return (
@@ -324,29 +273,6 @@ export function OutfitScrollShowcase() {
     offset: ["start start", "end end"],
   });
 
-  // TEST: hardcoded outfit-2 position — bypasses DB to isolate rendering vs save bug
-  const TEST_POSITIONS: OutfitPositions = {
-    "outfit-2": {
-      top:    { x: "50%", y: "10%", width: "80%" },
-      bottom: { x: "50%", y: "50%", width: "80%" },
-    },
-  };
-
-  const [positions, setPositions] = useState<OutfitPositions>(TEST_POSITIONS);
-
-  useEffect(() => {
-    fetch("/api/outfit-positions")
-      .then((r) => r.json())
-      .then((data: OutfitPositions) => {
-        console.log("[OutfitShowcase] positions loaded:", JSON.stringify(data));
-        // TEST: force outfit-2 to hardcoded values regardless of DB
-        setPositions({ ...data, ...TEST_POSITIONS });
-      })
-      .catch((err) => {
-        console.error("[OutfitShowcase] failed to load positions:", err);
-      });
-  }, []);
-
   return (
     <section ref={containerRef} className="relative h-[400vh]">
       <div
@@ -356,42 +282,20 @@ export function OutfitScrollShowcase() {
             "radial-gradient(ellipse 80% 90% at 50% 60%, #f6d3ee 0%, #f0aadf 40%, #e879cf 75%, #db63c2 100%)",
         }}
       >
-        {/* Model canvas — same 3:5 aspect ratio as admin editor canvas (600:1000).
-            Sized to fill the viewport while preserving ratio, so garment %
-            positions from the admin editor map 1:1 to this div. */}
-        {/* Canvas: 3:5 aspect ratio matching the admin editor (600×1000).
-            width = min(100vw, 100vh × 3/5) ensures the box fits the viewport
-            on both portrait and landscape without overflow or letterbox padding.
-            Garment % positions from the DB map 1:1 to this container. */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div
-            className="relative"
-            style={{
-              aspectRatio: "3/5",
-              width: "min(100vw, calc(100vh * 3 / 5))",
-              height: "auto",
-            }}
-          >
-            {/* Base model — fills canvas exactly, no object-contain needed */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/outfits/model.png"
-              alt="LOKYO model"
-              className="absolute inset-0 h-full w-full select-none"
-              draggable={false}
-            />
+        {/* Fixed model — always visible under garments */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/outfits/model.png"
+          alt="LOKYO model"
+          className="absolute inset-0 h-full w-full select-none object-contain object-center"
+          draggable={false}
+        />
 
-            {/* Garment layers — positioned relative to this canvas div */}
-            {OUTFITS.map((o, i) => (
-              <GarmentLayers
-                key={o.id}
-                outfit={o}
-                index={i}
-                progress={scrollYProgress}
-                positions={positions}
-              />
-            ))}
-          </div>
+        {/* Garment layers: tops from left, bottoms from right */}
+        <div className="absolute inset-0 z-10">
+          {OUTFITS.map((o, i) => (
+            <GarmentLayers key={o.id} outfit={o} index={i} progress={scrollYProgress} />
+          ))}
         </div>
 
         {/* Captions */}
