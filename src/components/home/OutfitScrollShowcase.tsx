@@ -147,7 +147,7 @@ function GarmentLayers({
   const bottomPos = slotData?.bottom;
 
   return (
-    <motion.div style={{ opacity }} className="pointer-events-none absolute inset-0 overflow-hidden">
+    <motion.div style={{ opacity }} className="pointer-events-none absolute inset-0">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {bottomPos ? (
         <motion.img
