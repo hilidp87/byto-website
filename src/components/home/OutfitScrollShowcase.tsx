@@ -324,14 +324,23 @@ export function OutfitScrollShowcase() {
     offset: ["start start", "end end"],
   });
 
-  const [positions, setPositions] = useState<OutfitPositions>({});
+  // TEST: hardcoded outfit-2 position — bypasses DB to isolate rendering vs save bug
+  const TEST_POSITIONS: OutfitPositions = {
+    "outfit-2": {
+      top:    { x: "50%", y: "10%", width: "80%" },
+      bottom: { x: "50%", y: "50%", width: "80%" },
+    },
+  };
+
+  const [positions, setPositions] = useState<OutfitPositions>(TEST_POSITIONS);
 
   useEffect(() => {
     fetch("/api/outfit-positions")
       .then((r) => r.json())
       .then((data: OutfitPositions) => {
         console.log("[OutfitShowcase] positions loaded:", JSON.stringify(data));
-        setPositions(data);
+        // TEST: force outfit-2 to hardcoded values regardless of DB
+        setPositions({ ...data, ...TEST_POSITIONS });
       })
       .catch((err) => {
         console.error("[OutfitShowcase] failed to load positions:", err);
