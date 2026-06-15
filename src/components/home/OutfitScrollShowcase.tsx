@@ -76,19 +76,23 @@ function slice(index: number) {
   return { start, end, enterEnd: start + span * T, exitStart: end - span * T };
 }
 
-// When a position is saved, the img is centered at pos.x using left+translateX(-50%).
-// The slide animation also uses translateX (via framer-motion x), so we combine both
-// with transformTemplate: translateX(animVw - 50%) keeps centering intact during slide.
+// Mirrors exactly how StylesEditor.tsx renders the garment:
+// left = (garmentX - garmentW/2) / CANVAS_W * 100  →  x - width/2
+// top  = garmentY / CANVAS_H * 100
+// width = garmentW / CANVAS_W * 100
+// height: auto
+// No additional transform — the slide x (vw units) is applied separately by framer-motion.
 function positionedStyle(pos: GarmentPos): React.CSSProperties {
+  const xNum = parseFloat(pos.x);
+  const wNum = parseFloat(pos.width);
   return {
     position: "absolute",
-    left: pos.x,
+    left: `${(xNum - wNum / 2).toFixed(2)}%`,
     top: pos.y,
     width: pos.width,
     height: "auto",
   };
 }
-
 
 const DEFAULT_IMG_CLASS =
   "absolute inset-0 h-full w-full select-none object-contain";
@@ -151,7 +155,6 @@ function GarmentLayers({
           alt=""
           aria-hidden
           style={{ x: bottomXVw, ...positionedStyle(bottomPos) }}
-          transformTemplate={({ x }) => `translateX(calc(${x} - 50%))`}
           className={POSITIONED_IMG_CLASS}
           draggable={false}
           loading={first ? "eager" : "lazy"}
@@ -173,7 +176,6 @@ function GarmentLayers({
           src={outfit.top}
           alt={outfit.title}
           style={{ x: topXVw, ...positionedStyle(topPos) }}
-          transformTemplate={({ x }) => `translateX(calc(${x} - 50%))`}
           className={POSITIONED_IMG_CLASS}
           draggable={false}
           loading={first ? "eager" : "lazy"}
@@ -348,12 +350,20 @@ export function OutfitScrollShowcase() {
         {/* Model canvas — same 3:5 aspect ratio as admin editor canvas (600:1000).
             Sized to fill the viewport while preserving ratio, so garment %
             positions from the admin editor map 1:1 to this div. */}
-        <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+        {/* Canvas: 3:5 aspect ratio matching the admin editor (600×1000).
+            width = min(100vw, 100vh × 3/5) ensures the box fits the viewport
+            on both portrait and landscape without overflow or letterbox padding.
+            Garment % positions from the DB map 1:1 to this container. */}
+        <div className="absolute inset-0 flex items-center justify-center">
           <div
-            className="relative h-full w-full"
-            style={{ aspectRatio: "3/5", maxWidth: "100%", maxHeight: "100%" }}
+            className="relative"
+            style={{
+              aspectRatio: "3/5",
+              width: "min(100vw, calc(100vh * 3 / 5))",
+              height: "auto",
+            }}
           >
-            {/* Base model */}
+            {/* Base model — fills canvas exactly, no object-contain needed */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/outfits/model.png"
