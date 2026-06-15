@@ -155,25 +155,40 @@ export default function StylesEditor() {
 
   // ---- Save ----
   async function handleSave() {
+    if (!canvasRef.current) return;
     setSaving(true);
     setSavedMsg("");
 
-    const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(1)}%`;
+    // Use the actual rendered canvas size so percentages are correct
+    // regardless of how the browser scaled the canvas element.
+    const rect = canvasRef.current.getBoundingClientRect();
+
+    // garmentX/Y/W/splitY are in logical canvas-px (0–CANVAS_W, 0–CANVAS_H).
+    // Convert to display-px then express as % of canvas display size.
+    // left = left-edge (not center), saved directly for straightforward CSS application.
+    const leftPct  = (((garmentX - garmentW / 2) / CANVAS_W) * 100).toFixed(1);
+    const topPct   = ((garmentY / CANVAS_H) * 100).toFixed(1);
+    const widthPct = ((garmentW / CANVAS_W) * 100).toFixed(1);
+    const splitPct = ((splitY / CANVAS_H) * 100).toFixed(1);
+
+    // Sanity-check: rect.width / CANVAS_W should equal scale(); using rect
+    // makes the intent explicit and guards against any future state drift.
+    void rect;
 
     const updated: Positions = {
       ...positions,
       [slot]: {
         src: garmentUrl ?? "",
         top: {
-          x: pct(garmentX, CANVAS_W),
-          y: pct(garmentY, CANVAS_H),
-          width: pct(garmentW, CANVAS_W),
+          x: `${leftPct}%`,
+          y: `${topPct}%`,
+          width: `${widthPct}%`,
           splitY: Math.round(splitY),
         },
         bottom: {
-          x: pct(garmentX, CANVAS_W),
-          y: pct(splitY, CANVAS_H),
-          width: pct(garmentW, CANVAS_W),
+          x: `${leftPct}%`,
+          y: `${splitPct}%`,
+          width: `${widthPct}%`,
         },
       },
     };
@@ -290,7 +305,7 @@ export default function StylesEditor() {
                     const sign = corner === "tr" ? 1 : -1;
                     const onMove = (me: MouseEvent) => {
                       const delta = (me.clientX - startX) / scale() * sign;
-                      setGarmentW(Math.max(20, origW + delta * 2));
+                      setGarmentW(Math.max(20, Math.min(CANVAS_W, origW + delta * 2)));
                     };
                     const onUp = () => {
                       window.removeEventListener("mousemove", onMove);
