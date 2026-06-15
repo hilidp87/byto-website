@@ -91,7 +91,7 @@ function positionedStyle(pos: GarmentPos): React.CSSProperties {
 
 
 const DEFAULT_IMG_CLASS =
-  "absolute inset-0 h-full w-full select-none object-contain object-center";
+  "absolute inset-0 h-full w-full select-none object-contain";
 const POSITIONED_IMG_CLASS = "select-none";
 
 function GarmentLayers({
@@ -143,7 +143,7 @@ function GarmentLayers({
   const bottomPos = slotData?.bottom;
 
   return (
-    <motion.div style={{ opacity }} className="pointer-events-none absolute inset-0">
+    <motion.div style={{ opacity }} className="pointer-events-none absolute inset-0 overflow-hidden">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {bottomPos ? (
         <motion.img
@@ -345,26 +345,34 @@ export function OutfitScrollShowcase() {
             "radial-gradient(ellipse 80% 90% at 50% 60%, #f6d3ee 0%, #f0aadf 40%, #e879cf 75%, #db63c2 100%)",
         }}
       >
-        {/* Base model — always visible, never moves */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/outfits/model.png"
-          alt="LOKYO model"
-          className="absolute inset-0 h-full w-full select-none object-contain object-center"
-          draggable={false}
-        />
-
-        {/* Garment layers */}
-        <div className="absolute inset-0 z-10">
-          {OUTFITS.map((o, i) => (
-            <GarmentLayers
-              key={o.id}
-              outfit={o}
-              index={i}
-              progress={scrollYProgress}
-              positions={positions}
+        {/* Model canvas — same 3:5 aspect ratio as admin editor canvas (600:1000).
+            Sized to fill the viewport while preserving ratio, so garment %
+            positions from the admin editor map 1:1 to this div. */}
+        <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+          <div
+            className="relative h-full w-full"
+            style={{ aspectRatio: "3/5", maxWidth: "100%", maxHeight: "100%" }}
+          >
+            {/* Base model */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/outfits/model.png"
+              alt="LOKYO model"
+              className="absolute inset-0 h-full w-full select-none"
+              draggable={false}
             />
-          ))}
+
+            {/* Garment layers — positioned relative to this canvas div */}
+            {OUTFITS.map((o, i) => (
+              <GarmentLayers
+                key={o.id}
+                outfit={o}
+                index={i}
+                progress={scrollYProgress}
+                positions={positions}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Captions */}
