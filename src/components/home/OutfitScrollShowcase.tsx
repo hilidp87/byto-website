@@ -76,19 +76,19 @@ function slice(index: number) {
   return { start, end, enterEnd: start + span * T, exitStart: end - span * T };
 }
 
-function garmentStyle(pos: GarmentPos | undefined): React.CSSProperties {
-  if (!pos) return {};
-  const xNum = parseFloat(pos.x);
-  const wNum = parseFloat(pos.width);
-  const leftPct = xNum - wNum / 2;
+// When a position is saved, the img is centered at pos.x using left+translateX(-50%).
+// The slide animation also uses translateX (via framer-motion x), so we combine both
+// with transformTemplate: translateX(animVw - 50%) keeps centering intact during slide.
+function positionedStyle(pos: GarmentPos): React.CSSProperties {
   return {
     position: "absolute",
-    left: `${leftPct.toFixed(2)}%`,
+    left: pos.x,
     top: pos.y,
     width: pos.width,
     height: "auto",
   };
 }
+
 
 const DEFAULT_IMG_CLASS =
   "absolute inset-0 h-full w-full select-none object-contain object-center";
@@ -145,24 +145,49 @@ function GarmentLayers({
   return (
     <motion.div style={{ opacity }} className="pointer-events-none absolute inset-0">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <motion.img
-        src={outfit.bottom}
-        alt=""
-        aria-hidden
-        style={{ x: bottomXVw, ...garmentStyle(bottomPos) }}
-        className={bottomPos ? POSITIONED_IMG_CLASS : DEFAULT_IMG_CLASS}
-        draggable={false}
-        loading={first ? "eager" : "lazy"}
-      />
+      {bottomPos ? (
+        <motion.img
+          src={outfit.bottom}
+          alt=""
+          aria-hidden
+          style={{ x: bottomXVw, ...positionedStyle(bottomPos) }}
+          transformTemplate={({ x }) => `translateX(calc(${x} - 50%))`}
+          className={POSITIONED_IMG_CLASS}
+          draggable={false}
+          loading={first ? "eager" : "lazy"}
+        />
+      ) : (
+        <motion.img
+          src={outfit.bottom}
+          alt=""
+          aria-hidden
+          style={{ x: bottomXVw }}
+          className={DEFAULT_IMG_CLASS}
+          draggable={false}
+          loading={first ? "eager" : "lazy"}
+        />
+      )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <motion.img
-        src={outfit.top}
-        alt={outfit.title}
-        style={{ x: topXVw, ...garmentStyle(topPos) }}
-        className={topPos ? POSITIONED_IMG_CLASS : DEFAULT_IMG_CLASS}
-        draggable={false}
-        loading={first ? "eager" : "lazy"}
-      />
+      {topPos ? (
+        <motion.img
+          src={outfit.top}
+          alt={outfit.title}
+          style={{ x: topXVw, ...positionedStyle(topPos) }}
+          transformTemplate={({ x }) => `translateX(calc(${x} - 50%))`}
+          className={POSITIONED_IMG_CLASS}
+          draggable={false}
+          loading={first ? "eager" : "lazy"}
+        />
+      ) : (
+        <motion.img
+          src={outfit.top}
+          alt={outfit.title}
+          style={{ x: topXVw }}
+          className={DEFAULT_IMG_CLASS}
+          draggable={false}
+          loading={first ? "eager" : "lazy"}
+        />
+      )}
     </motion.div>
   );
 }
