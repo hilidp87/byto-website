@@ -63,9 +63,14 @@ export default function StylesEditor() {
     const s = positions[slot];
     if (s) {
       setGarmentUrl(s.src);
-      setGarmentX(parseFloat(s.top.x) / 100 * CANVAS_W);
-      setGarmentY(parseFloat(s.top.y) / 100 * CANVAS_H);
-      setGarmentW(parseFloat(s.top.width) / 100 * CANVAS_W);
+      // Clamp restored values to valid canvas-px ranges to guard against
+      // previously-saved bad values (e.g. width > 100%).
+      const restoredW = Math.min(CANVAS_W, Math.max(20, parseFloat(s.top.width) / 100 * CANVAS_W));
+      const restoredX = Math.min(CANVAS_W, Math.max(0, parseFloat(s.top.x) / 100 * CANVAS_W + restoredW / 2));
+      const restoredY = Math.min(CANVAS_H, Math.max(0, parseFloat(s.top.y) / 100 * CANVAS_H));
+      setGarmentX(restoredX);
+      setGarmentY(restoredY);
+      setGarmentW(restoredW);
       setSplitY(s.top.splitY);
     } else {
       setGarmentUrl(null);
@@ -159,21 +164,22 @@ export default function StylesEditor() {
     setSaving(true);
     setSavedMsg("");
 
-    // Use the actual rendered canvas size so percentages are correct
-    // regardless of how the browser scaled the canvas element.
+    // Use the actual rendered canvas element size for all calculations.
     const rect = canvasRef.current.getBoundingClientRect();
+    const cw = rect.width;   // canvas rendered width in display-px
+    const ch = rect.height;  // canvas rendered height in display-px
 
-    // garmentX/Y/W/splitY are in logical canvas-px (0–CANVAS_W, 0–CANVAS_H).
-    // Convert to display-px then express as % of canvas display size.
-    // left = left-edge (not center), saved directly for straightforward CSS application.
-    const leftPct  = (((garmentX - garmentW / 2) / CANVAS_W) * 100).toFixed(1);
-    const topPct   = ((garmentY / CANVAS_H) * 100).toFixed(1);
-    const widthPct = ((garmentW / CANVAS_W) * 100).toFixed(1);
-    const splitPct = ((splitY / CANVAS_H) * 100).toFixed(1);
+    // Convert logical canvas-px → display-px → % of canvas.
+    // Clamp width to canvas bounds before computing left edge.
+    const clampedW = Math.min(cw, Math.max(20 / CANVAS_W * cw, garmentW / CANVAS_W * cw));
+    const leftPx   = (garmentX / CANVAS_W * cw) - clampedW / 2;
+    const topPx    = garmentY / CANVAS_H * ch;
+    const splitPx  = splitY   / CANVAS_H * ch;
 
-    // Sanity-check: rect.width / CANVAS_W should equal scale(); using rect
-    // makes the intent explicit and guards against any future state drift.
-    void rect;
+    const leftPct  = ((leftPx  / cw) * 100).toFixed(1);
+    const topPct   = ((topPx   / ch) * 100).toFixed(1);
+    const widthPct = ((clampedW / cw) * 100).toFixed(1);
+    const splitPct = ((splitPx / ch) * 100).toFixed(1);
 
     const updated: Positions = {
       ...positions,
