@@ -350,7 +350,7 @@ export function OutfitScrollShowcase() {
           <div
             className="relative overflow-hidden"
             style={{
-              height: "min(100vh, calc(100vw * 5 / 3))",
+              width: "min(100vw, calc(100vh * 3 / 5))",
               aspectRatio: "3/5",
             }}
           >

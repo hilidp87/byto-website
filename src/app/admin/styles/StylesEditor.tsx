@@ -60,6 +60,10 @@ export default function StylesEditor() {
 
   // When slot changes, load its saved state into editor
   useEffect(() => {
+    if (canvasRef.current) {
+      const r = canvasRef.current.getBoundingClientRect();
+      console.log(`[AdminCanvas] rect for slot ${slot}:`, Math.round(r.width), '×', Math.round(r.height));
+    }
     const s = positions[slot];
     if (s) {
       setGarmentUrl(s.src);
@@ -227,7 +231,12 @@ export default function StylesEditor() {
         <div
           ref={canvasRef}
           className="relative mx-auto overflow-hidden rounded-xl border border-gray-200 bg-pink-100"
-          style={{ aspectRatio: "600/1000", maxWidth: 420, userSelect: "none" }}
+          style={{
+            width: "min(100vw, calc(100vh * 3 / 5))",
+            aspectRatio: "3/5",
+            maxWidth: 420,
+            userSelect: "none",
+          }}
         >
           {/* Model base */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
