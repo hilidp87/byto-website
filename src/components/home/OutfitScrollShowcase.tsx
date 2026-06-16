@@ -278,12 +278,20 @@ export function OutfitScrollShowcase() {
   const [positions, setPositions] = useState<Positions>({});
   useEffect(() => {
     fetch("/api/outfit-positions")
-      .then((r) => r.json())
-      .then((data: Positions) => setPositions(data))
-      .catch(() => {});
+      .then((r) => {
+        console.log('[OutfitShowcase] fetch status:', r.status);
+        return r.json();
+      })
+      .then((data: Positions) => {
+        console.log('[OutfitShowcase] positions from DB:', JSON.stringify(data));
+        setPositions(data);
+      })
+      .catch((err) => {
+        console.error('[OutfitShowcase] fetch error:', err);
+      });
   }, []);
   useEffect(() => {
-    console.log('[TEST] positions state:', positions);
+    console.log('[TEST] positions state:', JSON.stringify(positions));
   }, [positions]);
 
   return (
