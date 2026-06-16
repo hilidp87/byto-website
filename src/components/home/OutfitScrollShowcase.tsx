@@ -282,6 +282,9 @@ export function OutfitScrollShowcase() {
       .then((data: Positions) => setPositions(data))
       .catch(() => {});
   }, []);
+  useEffect(() => {
+    console.log('[TEST] positions state:', positions);
+  }, [positions]);
 
   return (
     <section ref={containerRef} className="relative h-[400vh]">
@@ -301,6 +304,7 @@ export function OutfitScrollShowcase() {
             style={{
               height: "min(100vh, calc(100vw * 5 / 3))",
               aspectRatio: "3/5",
+              border: "3px solid red",
             }}
           >
             {/* Fixed model — always visible under garments */}
