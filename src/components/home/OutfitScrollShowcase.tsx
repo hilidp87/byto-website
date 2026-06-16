@@ -123,29 +123,60 @@ function GarmentLayers({
     <motion.div style={{ opacity }} className="pointer-events-none absolute inset-0">
       {/* bottom garment — slides in from the right */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <motion.img
-        src={outfit.bottom}
-        alt=""
-        aria-hidden
-        style={bottomPos
-          ? { x: bottomXVw, position: "absolute", left: bottomPos.x, top: bottomPos.y, width: bottomPos.width, height: "auto" }
-          : { x: bottomXVw }}
-        className={bottomPos ? "select-none" : "absolute inset-0 h-full w-full select-none object-contain object-center"}
-        draggable={false}
-        loading={first ? "eager" : "lazy"}
-      />
+      {bottomPos ? (
+        <motion.img
+          src={outfit.bottom}
+          alt=""
+          aria-hidden
+          draggable={false}
+          loading={first ? "eager" : "lazy"}
+          className="absolute select-none"
+          style={{
+            left: bottomPos.x,
+            top: bottomPos.y,
+            width: bottomPos.width,
+            height: "auto",
+            x: bottomXVw,
+          }}
+        />
+      ) : (
+        <motion.img
+          src={outfit.bottom}
+          alt=""
+          aria-hidden
+          draggable={false}
+          loading={first ? "eager" : "lazy"}
+          className="absolute inset-0 h-full w-full select-none object-contain object-center"
+          style={{ x: bottomXVw }}
+        />
+      )}
       {/* top garment — slides in from the left */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <motion.img
-        src={outfit.top}
-        alt={outfit.title}
-        style={topPos
-          ? { x: topXVw, position: "absolute", left: topPos.x, top: topPos.y, width: topPos.width, height: "auto" }
-          : { x: topXVw }}
-        className={topPos ? "select-none" : "absolute inset-0 h-full w-full select-none object-contain object-center"}
-        draggable={false}
-        loading={first ? "eager" : "lazy"}
-      />
+      {topPos ? (
+        <motion.img
+          src={outfit.top}
+          alt={outfit.title}
+          draggable={false}
+          loading={first ? "eager" : "lazy"}
+          className="absolute select-none"
+          style={{
+            left: topPos.x,
+            top: topPos.y,
+            width: topPos.width,
+            height: "auto",
+            x: topXVw,
+          }}
+        />
+      ) : (
+        <motion.img
+          src={outfit.top}
+          alt={outfit.title}
+          draggable={false}
+          loading={first ? "eager" : "lazy"}
+          className="absolute inset-0 h-full w-full select-none object-contain object-center"
+          style={{ x: topXVw }}
+        />
+      )}
     </motion.div>
   );
 }
