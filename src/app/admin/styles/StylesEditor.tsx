@@ -162,60 +162,109 @@ export default function StylesEditor() {
     }
   }
 
+  // ---- Canvas crop helpers ----
+  async function cropGarmentImages(): Promise<{ topBlob: Blob; bottomBlob: Blob }> {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.crossOrigin = "anonymous";
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = garmentUrl!;
+    });
+
+    const gLeft = garmentX - garmentW / 2;
+    const garmentH = garmentW * img.naturalHeight / img.naturalWidth;
+
+    const makeCanvas = (clipTop: number, clipBottom: number): HTMLCanvasElement => {
+      const c = document.createElement("canvas");
+      c.width = CANVAS_W;
+      c.height = CANVAS_H;
+      const ctx = c.getContext("2d")!;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, clipTop, CANVAS_W, clipBottom - clipTop);
+      ctx.clip();
+      ctx.drawImage(img, gLeft, garmentY, garmentW, garmentH);
+      ctx.restore();
+      return c;
+    };
+
+    const toBlob = (c: HTMLCanvasElement): Promise<Blob> =>
+      new Promise((res, rej) =>
+        c.toBlob((b) => (b ? res(b) : rej(new Error("toBlob failed"))), "image/png")
+      );
+
+    const [topBlob, bottomBlob] = await Promise.all([
+      toBlob(makeCanvas(0, splitY)),
+      toBlob(makeCanvas(splitY, CANVAS_H)),
+    ]);
+
+    return { topBlob, bottomBlob };
+  }
+
   // ---- Save ----
   async function handleSave() {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !garmentUrl) return;
     setSaving(true);
     setSavedMsg("");
 
-    // Use the actual rendered canvas element size for all calculations.
-    const rect = canvasRef.current.getBoundingClientRect();
-    const cw = rect.width;   // canvas rendered width in display-px
-    const ch = rect.height;  // canvas rendered height in display-px
-
-    // Convert logical canvas-px → display-px → % of canvas.
-    // Clamp width to canvas bounds before computing left edge.
-    const clampedW = Math.min(cw, Math.max(20 / CANVAS_W * cw, garmentW / CANVAS_W * cw));
-    const leftPx   = (garmentX / CANVAS_W * cw) - clampedW / 2;
-    const topPx    = garmentY / CANVAS_H * ch;
-    const splitPx  = splitY   / CANVAS_H * ch;
-
-    const leftPct  = ((leftPx  / cw) * 100).toFixed(1);
-    const topPct   = ((topPx   / ch) * 100).toFixed(1);
-    const widthPct = ((clampedW / cw) * 100).toFixed(1);
-    const splitPct = ((splitPx / ch) * 100).toFixed(1);
-
-    const updated: Positions = {
-      ...positions,
-      [slot]: {
-        src: garmentUrl ?? "",
-        top: {
-          x: `${leftPct}%`,
-          y: `${topPct}%`,
-          width: `${widthPct}%`,
-          splitY: Math.round(splitY),
-        },
-        bottom: {
-          x: `${leftPct}%`,
-          y: `${splitPct}%`,
-          width: `${widthPct}%`,
-        },
-      },
-    };
-
     try {
+      // 1. Crop images client-side using HTML Canvas
+      setSavedMsg("Cropping…");
+      const { topBlob, bottomBlob } = await cropGarmentImages();
+
+      // 2. Upload both crops to Supabase storage
+      setSavedMsg("Uploading…");
+      const fd = new FormData();
+      fd.append("outfitId", slot);
+      fd.append("topCrop", topBlob, `${slot}-top.png`);
+      fd.append("bottomCrop", bottomBlob, `${slot}-bottom.png`);
+      const uploadRes = await fetch("/api/admin/upload-crops", { method: "POST", body: fd });
+      if (!uploadRes.ok) throw new Error(await uploadRes.text());
+      const { topUrl, bottomUrl } = await uploadRes.json() as { topUrl: string; bottomUrl: string };
+
+      // 3. Persist positions in DB (coordinates stored for reference)
+      setSavedMsg("Saving…");
+      const rect = canvasRef.current.getBoundingClientRect();
+      const cw = rect.width;
+      const ch = rect.height;
+      const clampedW = Math.min(cw, Math.max(20 / CANVAS_W * cw, garmentW / CANVAS_W * cw));
+      const leftPx = (garmentX / CANVAS_W * cw) - clampedW / 2;
+      const topPx = garmentY / CANVAS_H * ch;
+      const splitPx = splitY / CANVAS_H * ch;
+
+      const updated: Positions = {
+        ...positions,
+        [slot]: {
+          src: garmentUrl,
+          top: {
+            x: `${((leftPx / cw) * 100).toFixed(1)}%`,
+            y: `${((topPx / ch) * 100).toFixed(1)}%`,
+            width: `${((clampedW / cw) * 100).toFixed(1)}%`,
+            splitY: Math.round(splitY),
+          },
+          bottom: {
+            x: `${((leftPx / cw) * 100).toFixed(1)}%`,
+            y: `${((splitPx / ch) * 100).toFixed(1)}%`,
+            width: `${((clampedW / cw) * 100).toFixed(1)}%`,
+          },
+        },
+      };
+
       await fetch("/api/admin/outfit-positions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updated),
       });
+
       setPositions(updated);
-      setSavedMsg("Saved!");
-    } catch {
+      setSavedMsg(`Saved ✓  ${topUrl.split("/").pop()} · ${bottomUrl.split("/").pop()}`);
+    } catch (err) {
+      console.error("[StylesEditor] save failed:", err);
       setSavedMsg("Save failed.");
     } finally {
       setSaving(false);
-      setTimeout(() => setSavedMsg(""), 3000);
+      setTimeout(() => setSavedMsg(""), 8000);
     }
   }
 
@@ -440,7 +489,7 @@ export default function StylesEditor() {
           disabled={saving || !garmentUrl}
           className="rounded-lg bg-gray-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-700 disabled:opacity-40"
         >
-          {saving ? "Saving…" : "Save to positions.json"}
+          {saving ? savedMsg || "Working…" : "Crop & Save to Supabase"}
         </button>
         {savedMsg && (
           <p className={`text-center text-sm font-medium ${savedMsg.includes("fail") ? "text-red-600" : "text-green-600"}`}>

@@ -10,17 +10,8 @@ export async function GET() {
     const result: Record<string, object> = {};
     for (const row of rows) {
       result[row.outfitId] = {
-        top: {
-          x: `${row.topX}%`,
-          y: `${row.topY}%`,
-          width: `${row.topWidth}%`,
-          splitY: row.splitY,
-        },
-        bottom: {
-          x: `${row.bottomX}%`,
-          y: `${row.bottomY}%`,
-          width: `${row.bottomWidth}%`,
-        },
+        topSrc: row.topSrc ?? null,
+        bottomSrc: row.bottomSrc ?? null,
       };
     }
     return NextResponse.json(result);

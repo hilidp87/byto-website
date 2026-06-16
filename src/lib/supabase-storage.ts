@@ -32,3 +32,21 @@ export async function uploadToSupabase(
 
   return data.publicUrl;
 }
+
+/** Upload to a specific path (upsert — overwrites if exists). Used for outfit crops. */
+export async function uploadToSupabasePath(
+  storagePath: string,
+  buffer: Buffer,
+  contentType: string
+): Promise<string> {
+  const supabase = getClient();
+
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(storagePath, buffer, { contentType, upsert: true });
+
+  if (error) throw new Error(error.message);
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
+  return data.publicUrl;
+}

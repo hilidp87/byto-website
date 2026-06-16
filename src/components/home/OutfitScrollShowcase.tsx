@@ -10,6 +10,8 @@ import {
   type MotionValue,
 } from "framer-motion";
 
+type OutfitSources = Record<string, { topSrc: string; bottomSrc: string }>;
+
 type Outfit = {
   id: string;
   title: string;
@@ -61,10 +63,14 @@ function slice(index: number) {
 /** Top garment slides in from the LEFT, bottom from the RIGHT */
 function GarmentLayers({
   outfit,
+  topSrc,
+  bottomSrc,
   index,
   progress,
 }: {
   outfit: Outfit;
+  topSrc: string;
+  bottomSrc: string;
   index: number;
   progress: MotionValue<number>;
 }) {
@@ -118,7 +124,7 @@ function GarmentLayers({
     <motion.div style={{ opacity }} className="pointer-events-none absolute inset-0">
       {/* bottom garment — from the right, under the top */}
       <motion.img
-        src={outfit.bottom}
+        src={bottomSrc}
         alt=""
         aria-hidden
         style={{ x: bottomXPct }}
@@ -128,7 +134,7 @@ function GarmentLayers({
       />
       {/* top garment — from the left, over the bottom */}
       <motion.img
-        src={outfit.top}
+        src={topSrc}
         alt={outfit.title}
         style={{ x: topXPct }}
         className="absolute inset-0 h-full w-full select-none object-contain object-center"
@@ -266,7 +272,11 @@ function ProgressBar({ progress }: { progress: MotionValue<number> }) {
   );
 }
 
-export function OutfitScrollShowcase() {
+export function OutfitScrollShowcase({
+  sources = {},
+}: {
+  sources?: OutfitSources;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -293,9 +303,19 @@ export function OutfitScrollShowcase() {
 
         {/* Garment layers: tops from left, bottoms from right */}
         <div className="absolute inset-0 z-10">
-          {OUTFITS.map((o, i) => (
-            <GarmentLayers key={o.id} outfit={o} index={i} progress={scrollYProgress} />
-          ))}
+          {OUTFITS.map((o, i) => {
+            const s = sources[`outfit-${o.id}`];
+            return (
+              <GarmentLayers
+                key={o.id}
+                outfit={o}
+                topSrc={s?.topSrc ?? o.top}
+                bottomSrc={s?.bottomSrc ?? o.bottom}
+                index={i}
+                progress={scrollYProgress}
+              />
+            );
+          })}
         </div>
 
         {/* Captions */}

@@ -31,7 +31,13 @@ export async function POST() {
       ON "OutfitPosition"("outfitId")
     `;
 
-    // Verify the table is queryable
+    // Add topSrc / bottomSrc columns (idempotent)
+    await prisma.$executeRaw`
+      ALTER TABLE "OutfitPosition"
+        ADD COLUMN IF NOT EXISTS "topSrc"    TEXT,
+        ADD COLUMN IF NOT EXISTS "bottomSrc" TEXT
+    `;
+
     const count = await prisma.outfitPosition.count();
     return NextResponse.json({ ok: true, rows: count });
   } catch (err) {

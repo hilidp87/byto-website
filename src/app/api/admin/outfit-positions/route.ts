@@ -13,6 +13,9 @@ export async function GET() {
     const result: Record<string, object> = {};
     for (const row of rows) {
       result[row.outfitId] = {
+        src: row.topSrc ? row.topSrc.replace(/-top\.png$/, "") : null,
+        topSrc: row.topSrc ?? null,
+        bottomSrc: row.bottomSrc ?? null,
         top: {
           x: `${row.topX}%`,
           y: `${row.topY}%`,

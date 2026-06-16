@@ -215,5 +215,7 @@ model OutfitPosition {
   bottomX      Float
   bottomY      Float
   bottomWidth  Float
+  topSrc       String?
+  bottomSrc    String?
   updatedAt    DateTime @updatedAt
 }
