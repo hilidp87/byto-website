@@ -90,3 +90,24 @@ export interface OrderSummary {
     product: { title: string; slug: string; images: string[] };
   }[];
 }
+
+export interface OutfitConfig {
+  id: string;
+  slotId: string;
+  title: string;
+  subtitle: string;
+  href: string;
+  shirtSrc: string;
+  shirtX: number;
+  shirtY: number;
+  shirtWidth: number;
+  shirtRotation: number;
+  pantsSrc: string;
+  pantsX: number;
+  pantsY: number;
+  pantsWidth: number;
+  pantsRotation: number;
+  active: boolean;
+  sortOrder: number;
+  updatedAt: string; // ISO string (not Date — avoids Next.js serialization error)
+}
