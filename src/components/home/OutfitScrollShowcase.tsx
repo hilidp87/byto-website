@@ -110,6 +110,15 @@ function GarmentLayers({
     first ? [1,1,0] : last ? [0,1,1] : [0,1,1,0]
   );
 
+  if (slotPos) {
+    console.log(`[Garment ${outfit.positionKey}] top style:`, {
+      left: topPos?.x, top: topPos?.y, width: topPos?.width,
+    });
+    console.log(`[Garment ${outfit.positionKey}] bottom style:`, {
+      left: bottomPos?.x, top: bottomPos?.y, width: bottomPos?.width,
+    });
+  }
+
   return (
     <motion.div style={{ opacity }} className="pointer-events-none absolute inset-0">
       {/* bottom garment — slides in from the right */}
@@ -312,7 +321,6 @@ export function OutfitScrollShowcase() {
             style={{
               height: "min(100vh, calc(100vw * 5 / 3))",
               aspectRatio: "3/5",
-              border: "3px solid red",
             }}
           >
             {/* Fixed model — always visible under garments */}
