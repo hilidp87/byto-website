@@ -273,8 +273,6 @@ function ScrollHint({ carouselProg }: { carouselProg: MotionValue<number> }) {
 type Props = { configs: OutfitConfig[] };
 
 export function PublicTryOnAnimation({ configs }: Props) {
-  if (configs.length === 0) return null;
-
   const wrapperRef = useRef<HTMLDivElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -318,8 +316,8 @@ export function PublicTryOnAnimation({ configs }: Props) {
   const { scrollYProgress } = useScroll({ target: wrapperRef });
   const N = configs.length;
 
-  // Raw progress: 0 = first outfit, N−1 = last outfit
-  const rawCarouselProg = useTransform(scrollYProgress, [0, 1], [0, N - 1]);
+  // Raw progress: 0 = first outfit, N−1 = last outfit (clamp to avoid [0,-1] when empty)
+  const rawCarouselProg = useTransform(scrollYProgress, [0, 1], [0, Math.max(0, N - 1)]);
   // Spring-smooth for buttery transitions
   const carouselProg = useSpring(rawCarouselProg, {
     stiffness: 80,
@@ -331,6 +329,9 @@ export function PublicTryOnAnimation({ configs }: Props) {
   const allSrcs = Array.from(
     new Set(configs.flatMap((c) => [c.shirtSrc, c.pantsSrc].filter(Boolean)))
   ) as string[];
+
+  // Guard AFTER all hooks — hooks must always run unconditionally
+  if (configs.length === 0) return null;
 
   return (
     <div
