@@ -205,6 +205,27 @@ model WishlistItem {
   @@unique([userId, productId])
 }
 
+model OutfitConfig {
+  id            String   @id @default(cuid())
+  slotId        String   @unique
+  title         String   @default("")
+  subtitle      String   @default("")
+  href          String   @default("/looks")
+  shirtSrc      String   @default("")
+  shirtX        Float    @default(300)
+  shirtY        Float    @default(280)
+  shirtWidth    Float    @default(300)
+  shirtRotation Float    @default(0)
+  pantsSrc      String   @default("")
+  pantsX        Float    @default(300)
+  pantsY        Float    @default(650)
+  pantsWidth    Float    @default(330)
+  pantsRotation Float    @default(0)
+  active        Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  updatedAt     DateTime @updatedAt
+}
+
 model OutfitPosition {
   id           String   @id @default(cuid())
   outfitId     String   @unique

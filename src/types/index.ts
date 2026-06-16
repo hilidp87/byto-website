@@ -55,6 +55,27 @@ export interface WishlistEntry {
   price: number;
 }
 
+export interface OutfitConfig {
+  id: string;
+  slotId: string;
+  title: string;
+  subtitle: string;
+  href: string;
+  shirtSrc: string;
+  shirtX: number;
+  shirtY: number;
+  shirtWidth: number;
+  shirtRotation: number;
+  pantsSrc: string;
+  pantsX: number;
+  pantsY: number;
+  pantsWidth: number;
+  pantsRotation: number;
+  active: boolean;
+  sortOrder: number;
+  updatedAt: string;
+}
+
 export interface OrderSummary {
   id: string;
   status: string;

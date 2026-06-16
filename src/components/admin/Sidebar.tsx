@@ -12,6 +12,7 @@ import {
   RectangleGroupIcon,
   ChartBarIcon,
   SwatchIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 
 const NAV = [
@@ -21,6 +22,7 @@ const NAV = [
   { href: "/admin/customers", label: "Customers", icon: UsersIcon },
   { href: "/admin/looks", label: "لوک‌ها", icon: PhotoIcon },
   { href: "/admin/styles", label: "Styles Editor", icon: SwatchIcon },
+  { href: "/admin/outfit-config", label: "Try-On Editor", icon: SparklesIcon },
   { href: "/admin/content", label: "مدیریت محتوا", icon: RectangleGroupIcon },
   { href: "/admin/analytics", label: "آمار و تحلیل", icon: ChartBarIcon },
 ];
