@@ -1,14 +1,14 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   motion,
-  useScroll,
   useTransform,
   useSpring,
   useMotionValue,
   useMotionValueEvent,
+  animate,
   type MotionValue,
 } from "framer-motion";
 import type { OutfitConfig } from "@/types";
@@ -29,6 +29,13 @@ import type { OutfitConfig } from "@/types";
  *   Shirts  → upper area, horizontally distributed by slot offset
  *   Pants   → lower area, same horizontal distribution
  *   Never off-screen, never faded — always present in the scene
+ *
+ * NAVIGATION
+ *   Outfit switching is driven ONLY by horizontal gestures (wheel deltaX,
+ *   horizontal trackpad, pointer drag, touch swipe). Vertical page scroll
+ *   is never intercepted and never changes the active outfit. Each gesture
+ *   snaps to the nearest whole outfit index and animates there with an
+ *   eased spring — no scroll-position dependency, no "stop precisely here".
  */
 
 const CANVAS_W = 600;
@@ -45,8 +52,16 @@ const REST_SHIRT_W_VW = 0.12; // width as fraction of vw
 const REST_PANTS_Y_VH = 0.66;
 const REST_PANTS_W_VW = 0.12;
 
-// How many vh of scroll each outfit transition takes
-const SCROLL_PER_OUTFIT_VH = 200;
+// Snap transition tuning — premium, no bounce/elastic
+const SNAP_TRANSITION = { type: "spring" as const, stiffness: 220, damping: 30, mass: 1 };
+const GARMENT_SPRING = { stiffness: 220, damping: 30, restDelta: 0.001 };
+
+// Minimum horizontal drag/swipe distance (px) to trigger a snap
+const SWIPE_THRESHOLD_PX = 50;
+// Minimum cumulative horizontal wheel delta (px) to trigger a snap
+const WHEEL_THRESHOLD_PX = 40;
+// Cooldown after a wheel-triggered snap so one gesture doesn't fire multiple times
+const WHEEL_COOLDOWN_MS = 500;
 
 type BoxDims = { left: number; top: number; width: number; height: number };
 
@@ -61,7 +76,7 @@ function clamp01(v: number) {
 // ─── Per-garment animated layer ───────────────────────────────────────────────
 //
 // Each garment is a motion.img absolutely positioned in the sticky container.
-// Its left / top / width / rotate are driven by scroll progress via MotionValues,
+// Its left / top / width / rotate are driven by activeProg via MotionValues,
 // so they update on every frame without React re-renders.
 
 type GarmentLayerProps = {
@@ -79,8 +94,8 @@ type GarmentLayerProps = {
   ratio: number;
   // Which outfit slot this belongs to
   index: number;
-  // Smoothed carousel progress MotionValue (0 → N−1)
-  carouselProg: MotionValue<number>;
+  // Active outfit index, eased toward target on every gesture (0 → N−1)
+  activeProg: MotionValue<number>;
   // Box dims and resize trigger (refs/MVs so transforms always see latest values)
   boxDimsRef: React.RefObject<BoxDims>;
   resizeMV: MotionValue<number>;
@@ -92,14 +107,12 @@ function GarmentLayer({
   wornCX, wornCY, wornWidth, wornRotation,
   restYVh, restWVw,
   ratio,
-  index, carouselProg,
+  index, activeProg,
   boxDimsRef, resizeMV,
   zIndex,
 }: GarmentLayerProps) {
   // How far this outfit is from the active center (in slot units)
-  const rawOffset = useTransform(carouselProg, (p) => index - p);
-  // Smooth individual garment offset so each piece floats independently
-  const offset = useSpring(rawOffset, { stiffness: 90, damping: 24, restDelta: 0.001 });
+  const offset = useTransform(activeProg, (p) => index - p);
 
   // wornT: 0 = fully resting, 1 = fully on model
   const wornT = useTransform(offset, (off) => clamp01(1 - Math.abs(off)));
@@ -188,28 +201,17 @@ function GarmentLayer({
 
 function ActiveCaption({
   configs,
-  carouselProg,
+  activeIndex,
 }: {
   configs: OutfitConfig[];
-  carouselProg: MotionValue<number>;
+  activeIndex: number;
 }) {
-  const [activeIdx, setActiveIdx] = useState(0);
-  const activeIdxRef = useRef(0);
-
-  useMotionValueEvent(carouselProg, "change", (v) => {
-    const rounded = Math.round(clamp01(v / (configs.length - 1)) * (configs.length - 1));
-    if (rounded !== activeIdxRef.current) {
-      activeIdxRef.current = rounded;
-      setActiveIdx(rounded);
-    }
-  });
-
-  const config = configs[activeIdx];
+  const config = configs[activeIndex];
   if (!config) return null;
 
   return (
     <motion.div
-      key={activeIdx}
+      key={activeIndex}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
@@ -237,16 +239,10 @@ function ActiveCaption({
   );
 }
 
-// ─── Scroll hint ──────────────────────────────────────────────────────────────
+// ─── Swipe hint ───────────────────────────────────────────────────────────────
 
-function ScrollHint({ carouselProg }: { carouselProg: MotionValue<number> }) {
-  const [visible, setVisible] = useState(true);
-
-  useMotionValueEvent(carouselProg, "change", (v) => {
-    if (v > 0.05) setVisible(false);
-  });
-
-  if (!visible) return null;
+function SwipeHint({ hasInteracted }: { hasInteracted: boolean }) {
+  if (hasInteracted) return null;
 
   return (
     <motion.div
@@ -256,13 +252,13 @@ function ScrollHint({ carouselProg }: { carouselProg: MotionValue<number> }) {
       exit={{ opacity: 0 }}
       transition={{ delay: 1.2, duration: 0.6 }}
     >
-      <span className="tracking-widest uppercase text-[10px]">scroll</span>
+      <span className="tracking-widest uppercase text-[10px]">swipe or scroll sideways</span>
       <motion.span
-        animate={{ y: [0, 5, 0] }}
-        transition={{ repeat: Infinity, duration: 1.4, ease: "easeInOut" }}
+        animate={{ x: [0, 6, 0, -6, 0] }}
+        transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
         className="text-base"
       >
-        ↓
+        ↔
       </motion.span>
     </motion.div>
   );
@@ -273,7 +269,6 @@ function ScrollHint({ carouselProg }: { carouselProg: MotionValue<number> }) {
 type Props = { configs: OutfitConfig[] };
 
 export function PublicTryOnAnimation({ configs }: Props) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
 
@@ -285,6 +280,106 @@ export function PublicTryOnAnimation({ configs }: Props) {
 
   // Natural image aspect ratios (h/w) for vertical centering math
   const [ratios, setRatios] = useState<Record<string, number>>({});
+
+  // Active outfit index (snapped, whole number) — drives caption + hint state
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeIndexRef = useRef(0);
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  // Eased progress toward the active index — drives all garment transforms.
+  // Animated imperatively via `animate()` on every gesture-triggered snap,
+  // never tied to scroll position.
+  const activeProg = useMotionValue(0);
+
+  useMotionValueEvent(activeProg, "change", (v) => {
+    const rounded = Math.round(v);
+    if (rounded !== activeIndexRef.current) {
+      activeIndexRef.current = rounded;
+      setActiveIndex(rounded);
+    }
+  });
+
+  const N = configs.length;
+
+  const goTo = useCallback(
+    (next: number) => {
+      const clamped = Math.max(0, Math.min(N - 1, next));
+      setHasInteracted(true);
+      animate(activeProg, clamped, SNAP_TRANSITION);
+    },
+    [N, activeProg]
+  );
+
+  // Gesture state refs (no re-renders during a drag/wheel sequence)
+  const dragStartX = useRef<number | null>(null);
+  const dragStartIndex = useRef(0);
+  const wheelAccum = useRef(0);
+  const wheelCooldownUntil = useRef(0);
+
+  useEffect(() => {
+    const el = stickyRef.current;
+    if (!el) return;
+
+    function targetIndexFromProg() {
+      return Math.round(activeProg.get());
+    }
+
+    function onWheel(e: WheelEvent) {
+      // Only intercept clearly-horizontal intent; vertical scroll passes through untouched.
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+      e.preventDefault();
+
+      const now = performance.now();
+      if (now < wheelCooldownUntil.current) return;
+
+      wheelAccum.current += e.deltaX;
+      if (Math.abs(wheelAccum.current) >= WHEEL_THRESHOLD_PX) {
+        const dir = wheelAccum.current > 0 ? 1 : -1;
+        wheelAccum.current = 0;
+        wheelCooldownUntil.current = now + WHEEL_COOLDOWN_MS;
+        goTo(targetIndexFromProg() + dir);
+      }
+    }
+
+    function onPointerDown(e: PointerEvent) {
+      dragStartX.current = e.clientX;
+      dragStartIndex.current = targetIndexFromProg();
+    }
+
+    function onPointerMove(e: PointerEvent) {
+      if (dragStartX.current === null) return;
+      const dx = e.clientX - dragStartX.current;
+      // Live-follow the drag for immediate, pixel-accurate feedback
+      const vw = window.innerWidth;
+      const slotPx = vw * SLOT_VW;
+      activeProg.set(dragStartIndex.current - dx / slotPx);
+    }
+
+    function onPointerUp(e: PointerEvent) {
+      if (dragStartX.current === null) return;
+      const dx = e.clientX - dragStartX.current;
+      dragStartX.current = null;
+
+      if (Math.abs(dx) >= SWIPE_THRESHOLD_PX) {
+        const dir = dx > 0 ? -1 : 1;
+        goTo(dragStartIndex.current + dir);
+      } else {
+        goTo(dragStartIndex.current);
+      }
+    }
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+  }, [activeProg, goTo]);
 
   useEffect(() => {
     function measure() {
@@ -312,19 +407,6 @@ export function PublicTryOnAnimation({ configs }: Props) {
     };
   }, [resizeMV]);
 
-  // Scroll → carousel progress
-  const { scrollYProgress } = useScroll({ target: wrapperRef });
-  const N = configs.length;
-
-  // Raw progress: 0 = first outfit, N−1 = last outfit (clamp to avoid [0,-1] when empty)
-  const rawCarouselProg = useTransform(scrollYProgress, [0, 1], [0, Math.max(0, N - 1)]);
-  // Spring-smooth for buttery transitions
-  const carouselProg = useSpring(rawCarouselProg, {
-    stiffness: 80,
-    damping: 22,
-    restDelta: 0.001,
-  });
-
   // Collect all unique garment URLs for the preloader
   const allSrcs = Array.from(
     new Set(configs.flatMap((c) => [c.shirtSrc, c.pantsSrc].filter(Boolean)))
@@ -335,133 +417,126 @@ export function PublicTryOnAnimation({ configs }: Props) {
 
   return (
     <div
-      ref={wrapperRef}
-      style={{ height: `${N * SCROLL_PER_OUTFIT_VH}vh`, position: "relative" }}
+      ref={stickyRef}
+      style={{
+        position: "relative",
+        height: "100vh",
+        width: "100%",
+        overflow: "hidden",
+        touchAction: "pan-y",
+        background:
+          "radial-gradient(ellipse 80% 90% at 50% 60%, #f6d3ee 0%, #f0aadf 40%, #e879cf 75%, #db63c2 100%)",
+      }}
     >
+      {/* ── Model — stays fixed at center. Always behind garments ── */}
       <div
-        ref={stickyRef}
+        ref={boxRef}
         style={{
-          position: "sticky",
-          top: 0,
-          height: "100vh",
-          width: "100%",
-          overflow: "hidden",
-          background:
-            "radial-gradient(ellipse 80% 90% at 50% 60%, #f6d3ee 0%, #f0aadf 40%, #e879cf 75%, #db63c2 100%)",
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "min(100vw, calc(100vh * 3 / 5))",
+          aspectRatio: "3 / 5",
+          zIndex: 5,
+          pointerEvents: "none",
         }}
       >
-        {/* ── Model — stays fixed at center. Always behind garments ── */}
-        <div
-          ref={boxRef}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/outfits/model.png"
+          alt="LOKYO model"
           style={{
             position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-            width: "min(100vw, calc(100vh * 3 / 5))",
-            aspectRatio: "3 / 5",
-            zIndex: 5,
-            pointerEvents: "none",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            userSelect: "none",
           }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/outfits/model.png"
-            alt="LOKYO model"
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              userSelect: "none",
-            }}
-            draggable={false}
-          />
-        </div>
-
-        {/* ── All outfit garments — always present, morph between resting and worn ── */}
-        {configs.map((config, i) => {
-          // Fall back to sensible defaults until the preloader images load
-          const shirtRatio = ratios[config.shirtSrc] ?? 1.2;
-          const pantsRatio = ratios[config.pantsSrc] ?? 2.0;
-
-          return (
-            <div key={config.slotId}>
-              {/* Pants — rendered below shirt */}
-              {config.pantsSrc && (
-                <GarmentLayer
-                  src={config.pantsSrc}
-                  alt=""
-                  wornCX={config.pantsX}
-                  wornCY={config.pantsY}
-                  wornWidth={config.pantsWidth}
-                  wornRotation={config.pantsRotation}
-                  restYVh={REST_PANTS_Y_VH}
-                  restWVw={REST_PANTS_W_VW}
-                  ratio={pantsRatio}
-                  index={i}
-                  carouselProg={carouselProg}
-                  boxDimsRef={boxDimsRef}
-                  resizeMV={resizeMV}
-                  zIndex={6}
-                />
-              )}
-              {/* Shirt — rendered above pants */}
-              {config.shirtSrc && (
-                <GarmentLayer
-                  src={config.shirtSrc}
-                  alt={config.title}
-                  wornCX={config.shirtX}
-                  wornCY={config.shirtY}
-                  wornWidth={config.shirtWidth}
-                  wornRotation={config.shirtRotation}
-                  restYVh={REST_SHIRT_Y_VH}
-                  restWVw={REST_SHIRT_W_VW}
-                  ratio={shirtRatio}
-                  index={i}
-                  carouselProg={carouselProg}
-                  boxDimsRef={boxDimsRef}
-                  resizeMV={resizeMV}
-                  zIndex={7}
-                />
-              )}
-            </div>
-          );
-        })}
-
-        {/* ── Hidden preloader — captures natural image ratios ── */}
-        <div
-          aria-hidden
-          style={{ position: "absolute", opacity: 0, pointerEvents: "none", top: 0, left: 0 }}
-        >
-          {allSrcs.map((src) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={src}
-              src={src}
-              alt=""
-              onLoad={(e) => {
-                const img = e.currentTarget;
-                if (img.naturalWidth > 0) {
-                  setRatios((prev) => ({
-                    ...prev,
-                    [src]: img.naturalHeight / img.naturalWidth,
-                  }));
-                }
-              }}
-            />
-          ))}
-        </div>
-
-        {/* ── Caption for active outfit ── */}
-        {configs.length > 0 && (
-          <ActiveCaption configs={configs} carouselProg={carouselProg} />
-        )}
-
-        {/* ── Scroll hint ── */}
-        {N > 1 && <ScrollHint carouselProg={carouselProg} />}
+          draggable={false}
+        />
       </div>
+
+      {/* ── All outfit garments — always present, morph between resting and worn ── */}
+      {configs.map((config, i) => {
+        // Fall back to sensible defaults until the preloader images load
+        const shirtRatio = ratios[config.shirtSrc] ?? 1.2;
+        const pantsRatio = ratios[config.pantsSrc] ?? 2.0;
+
+        return (
+          <div key={config.slotId}>
+            {/* Pants — rendered below shirt */}
+            {config.pantsSrc && (
+              <GarmentLayer
+                src={config.pantsSrc}
+                alt=""
+                wornCX={config.pantsX}
+                wornCY={config.pantsY}
+                wornWidth={config.pantsWidth}
+                wornRotation={config.pantsRotation}
+                restYVh={REST_PANTS_Y_VH}
+                restWVw={REST_PANTS_W_VW}
+                ratio={pantsRatio}
+                index={i}
+                activeProg={activeProg}
+                boxDimsRef={boxDimsRef}
+                resizeMV={resizeMV}
+                zIndex={6}
+              />
+            )}
+            {/* Shirt — rendered above pants */}
+            {config.shirtSrc && (
+              <GarmentLayer
+                src={config.shirtSrc}
+                alt={config.title}
+                wornCX={config.shirtX}
+                wornCY={config.shirtY}
+                wornWidth={config.shirtWidth}
+                wornRotation={config.shirtRotation}
+                restYVh={REST_SHIRT_Y_VH}
+                restWVw={REST_SHIRT_W_VW}
+                ratio={shirtRatio}
+                index={i}
+                activeProg={activeProg}
+                boxDimsRef={boxDimsRef}
+                resizeMV={resizeMV}
+                zIndex={7}
+              />
+            )}
+          </div>
+        );
+      })}
+
+      {/* ── Hidden preloader — captures natural image ratios ── */}
+      <div
+        aria-hidden
+        style={{ position: "absolute", opacity: 0, pointerEvents: "none", top: 0, left: 0 }}
+      >
+        {allSrcs.map((src) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={src}
+            src={src}
+            alt=""
+            onLoad={(e) => {
+              const img = e.currentTarget;
+              if (img.naturalWidth > 0) {
+                setRatios((prev) => ({
+                  ...prev,
+                  [src]: img.naturalHeight / img.naturalWidth,
+                }));
+              }
+            }}
+          />
+        ))}
+      </div>
+
+      {/* ── Caption for active outfit ── */}
+      <ActiveCaption configs={configs} activeIndex={activeIndex} />
+
+      {/* ── Swipe hint ── */}
+      {N > 1 && <SwipeHint hasInteracted={hasInteracted} />}
     </div>
   );
 }
