@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 
-type SlotKey = "outfit-1" | "outfit-2" | "outfit-3";
+type SlotKey = string;
 
 type SlotData = {
   src: string;
@@ -15,7 +15,10 @@ type Positions = Partial<Record<SlotKey, SlotData>>;
 const CANVAS_W = 600;
 const CANVAS_H = 1000;
 
-const SLOTS: SlotKey[] = ["outfit-1", "outfit-2", "outfit-3"];
+// Ten outfit slots (outfit-1 … outfit-10). Slots 1-3 are the original styles;
+// 4-10 are new and behave identically — same upload / drag / scale / save flow.
+const SLOT_COUNT = 10;
+const SLOTS: SlotKey[] = Array.from({ length: SLOT_COUNT }, (_, i) => `outfit-${i + 1}`);
 
 export default function StylesEditor() {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -213,17 +216,10 @@ export default function StylesEditor() {
       setSavedMsg("Cropping…");
       const { topBlob, bottomBlob } = await cropGarmentImages();
 
-      // 2. Upload both crops to Supabase storage
-      setSavedMsg("Uploading…");
-      const fd = new FormData();
-      fd.append("outfitId", slot);
-      fd.append("topCrop", topBlob, `${slot}-top.png`);
-      fd.append("bottomCrop", bottomBlob, `${slot}-bottom.png`);
-      const uploadRes = await fetch("/api/admin/upload-crops", { method: "POST", body: fd });
-      if (!uploadRes.ok) throw new Error(await uploadRes.text());
-      const { topUrl, bottomUrl } = await uploadRes.json() as { topUrl: string; bottomUrl: string };
-
-      // 3. Persist positions in DB (coordinates stored for reference)
+      // 2. Persist positions in DB FIRST so the row exists. The crop-upload
+      //    step below sets topSrc/bottomSrc on this row, so it must already be
+      //    present — otherwise a brand-new slot would need two saves before its
+      //    image URLs stick. (coordinates stored for reference)
       setSavedMsg("Saving…");
       const rect = canvasRef.current.getBoundingClientRect();
       const cw = rect.width;
@@ -256,6 +252,17 @@ export default function StylesEditor() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updated),
       });
+
+      // 3. Upload both crops to Supabase storage; this also writes the public
+      //    topSrc/bottomSrc URLs onto the position row created above.
+      setSavedMsg("Uploading…");
+      const fd = new FormData();
+      fd.append("outfitId", slot);
+      fd.append("topCrop", topBlob, `${slot}-top.png`);
+      fd.append("bottomCrop", bottomBlob, `${slot}-bottom.png`);
+      const uploadRes = await fetch("/api/admin/upload-crops", { method: "POST", body: fd });
+      if (!uploadRes.ok) throw new Error(await uploadRes.text());
+      const { topUrl, bottomUrl } = await uploadRes.json() as { topUrl: string; bottomUrl: string };
 
       setPositions(updated);
       setSavedMsg(`Saved ✓  ${topUrl.split("/").pop()} · ${bottomUrl.split("/").pop()}`);
@@ -414,12 +421,12 @@ export default function StylesEditor() {
           <label className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-gray-500">
             Outfit Slot
           </label>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {SLOTS.map((s) => (
               <button
                 key={s}
                 onClick={() => setSlot(s)}
-                className={`flex-1 rounded-lg border py-2 text-sm font-semibold transition ${
+                className={`min-w-[44px] flex-1 rounded-lg border py-2 text-sm font-semibold transition ${
                   slot === s
                     ? "border-gray-900 bg-gray-900 text-white"
                     : "border-gray-300 text-gray-600 hover:border-gray-500"

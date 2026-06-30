@@ -46,16 +46,29 @@ const OUTFITS: Outfit[] = [
     bottom: "/outfits/outfit-2-bottom.png",
     href: "/looks",
   },
+  // Slots 4-10 — no committed local fallback images. They only appear once a
+  // garment has been uploaded for them in the admin (sources[`outfit-N`]);
+  // empty slots are filtered out below so no broken/empty frame is rendered.
+  ...Array.from({ length: 7 }, (_, i) => {
+    const id = String(i + 4);
+    return {
+      id,
+      title: `Style ${id}`,
+      subtitle: "",
+      top: "",
+      bottom: "",
+      href: "/looks",
+    } satisfies Outfit;
+  }),
 ];
 
-const TOTAL = OUTFITS.length;
 /** fraction of each outfit's slice spent on the slide-in / slide-out transition */
 const T = 0.25;
 
 /** Per-outfit slice boundaries of the global scroll progress */
-function slice(index: number) {
-  const start = index / TOTAL;
-  const end = (index + 1) / TOTAL;
+function slice(index: number, total: number) {
+  const start = index / total;
+  const end = (index + 1) / total;
   const span = end - start;
   return { start, end, enterEnd: start + span * T, exitStart: end - span * T };
 }
@@ -66,17 +79,19 @@ function GarmentLayers({
   topSrc,
   bottomSrc,
   index,
+  total,
   progress,
 }: {
   outfit: Outfit;
   topSrc: string;
   bottomSrc: string;
   index: number;
+  total: number;
   progress: MotionValue<number>;
 }) {
-  const { start, end, enterEnd, exitStart } = slice(index);
+  const { start, end, enterEnd, exitStart } = slice(index, total);
   const first = index === 0;
-  const last = index === TOTAL - 1;
+  const last = index === total - 1;
 
   // raw x-position percentages, then smoothed with a spring
   const topXRaw = useTransform(
@@ -149,15 +164,17 @@ function GarmentLayers({
 function Caption({
   outfit,
   index,
+  total,
   progress,
 }: {
   outfit: Outfit;
   index: number;
+  total: number;
   progress: MotionValue<number>;
 }) {
-  const { start, end, enterEnd, exitStart } = slice(index);
+  const { start, end, enterEnd, exitStart } = slice(index, total);
   const first = index === 0;
-  const last = index === TOTAL - 1;
+  const last = index === total - 1;
 
   const opacity = useTransform(
     progress,
@@ -194,14 +211,16 @@ function Caption({
 /** 01 / 03 counter, top-left */
 function CounterItem({
   index,
+  total,
   progress,
 }: {
   index: number;
+  total: number;
   progress: MotionValue<number>;
 }) {
-  const { start, end, enterEnd, exitStart } = slice(index);
+  const { start, end, enterEnd, exitStart } = slice(index, total);
   const first = index === 0;
-  const last = index === TOTAL - 1;
+  const last = index === total - 1;
   const opacity = useTransform(
     progress,
     first
@@ -216,14 +235,14 @@ function CounterItem({
       style={{ opacity }}
       className="absolute text-xs font-semibold uppercase tracking-widest text-gray-700"
     >
-      {String(index + 1).padStart(2, "0")} / {String(TOTAL).padStart(2, "0")}
+      {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
     </motion.p>
   );
 }
 
 /** Right-side navigation dot */
-function Dot({ index, progress }: { index: number; progress: MotionValue<number> }) {
-  const { start, end } = slice(index);
+function Dot({ index, total, progress }: { index: number; total: number; progress: MotionValue<number> }) {
+  const { start, end } = slice(index, total);
   const pad = 0.02;
   const scale = useTransform(
     progress,
@@ -283,8 +302,26 @@ export function OutfitScrollShowcase({
     offset: ["start start", "end end"],
   });
 
+  // Resolve each slot to its effective garment images, preferring uploaded
+  // sources and falling back to any committed local image (slots 1-3). Slots
+  // without a usable image (empty 4-10) are skipped so no broken/empty frame
+  // is shown. The remaining outfits are re-indexed so the animation logic is
+  // identical to the original — just over however many outfits actually exist.
+  const visible = OUTFITS.map((o) => {
+    const s = sources[`outfit-${o.id}`];
+    const topSrc = s?.topSrc || o.top;
+    const bottomSrc = s?.bottomSrc || o.bottom;
+    return { outfit: o, topSrc, bottomSrc };
+  }).filter((v) => v.topSrc && v.bottomSrc);
+
+  const total = visible.length;
+
+  // Scroll height scales with the number of outfits so each one keeps the same
+  // ~100vh of scroll as the original 3-outfit version (3 → 400vh, unchanged).
+  const sectionHeight = `${(total + 1) * 100}vh`;
+
   return (
-    <section ref={containerRef} className="relative h-[400vh]">
+    <section ref={containerRef} className="relative" style={{ height: sectionHeight }}>
       <div
         className="sticky top-0 h-screen overflow-hidden"
         style={{
@@ -303,37 +340,35 @@ export function OutfitScrollShowcase({
 
         {/* Garment layers: tops from left, bottoms from right */}
         <div className="absolute inset-0 z-10">
-          {OUTFITS.map((o, i) => {
-            const s = sources[`outfit-${o.id}`];
-            return (
-              <GarmentLayers
-                key={o.id}
-                outfit={o}
-                topSrc={s?.topSrc ?? o.top}
-                bottomSrc={s?.bottomSrc ?? o.bottom}
-                index={i}
-                progress={scrollYProgress}
-              />
-            );
-          })}
+          {visible.map((v, i) => (
+            <GarmentLayers
+              key={v.outfit.id}
+              outfit={v.outfit}
+              topSrc={v.topSrc}
+              bottomSrc={v.bottomSrc}
+              index={i}
+              total={total}
+              progress={scrollYProgress}
+            />
+          ))}
         </div>
 
         {/* Captions */}
-        {OUTFITS.map((o, i) => (
-          <Caption key={o.id} outfit={o} index={i} progress={scrollYProgress} />
+        {visible.map((v, i) => (
+          <Caption key={v.outfit.id} outfit={v.outfit} index={i} total={total} progress={scrollYProgress} />
         ))}
 
-        {/* Counter 01/03 */}
+        {/* Counter 01/NN */}
         <div className="absolute left-5 top-6 z-30">
-          {OUTFITS.map((_, i) => (
-            <CounterItem key={i} index={i} progress={scrollYProgress} />
+          {visible.map((v, i) => (
+            <CounterItem key={v.outfit.id} index={i} total={total} progress={scrollYProgress} />
           ))}
         </div>
 
         {/* Right dots */}
         <div className="absolute right-4 top-1/2 z-30 flex -translate-y-1/2 flex-col gap-3 sm:right-6">
-          {OUTFITS.map((_, i) => (
-            <Dot key={i} index={i} progress={scrollYProgress} />
+          {visible.map((v, i) => (
+            <Dot key={v.outfit.id} index={i} total={total} progress={scrollYProgress} />
           ))}
         </div>
 
