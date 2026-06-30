@@ -14,6 +14,13 @@ const SLOT_LABELS: Record<SlotId, string> = Object.fromEntries(
   SLOTS.map((s, i) => [s, `Look ${i + 1}`])
 );
 
+// Deterministic ordering: slot-1 → 1, slot-2 → 2, … slot-10 → 10.
+// The frontend already renders outfits ordered by sortOrder ASC.
+function slotSortOrder(slotId: SlotId): number {
+  const n = Number(slotId.replace("slot-", ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
 const DEFAULT_CONFIG: Omit<OutfitConfig, "id" | "updatedAt"> = {
   slotId: "slot-1",
   title: "",
@@ -76,6 +83,7 @@ export default function AdminEditor() {
     ...activeConfig,
     slotId: activeSlot,
     ...localEdits[activeSlot],
+    sortOrder: slotSortOrder(activeSlot),
   };
 
   const { shirt, pants } = configToGarments(merged);
