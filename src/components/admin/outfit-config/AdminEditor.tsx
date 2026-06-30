@@ -6,14 +6,13 @@ import { GarmentUploader } from "./GarmentUploader";
 import { AlignmentCanvas, type GarmentState, CANVAS_W, CANVAS_H } from "./AlignmentCanvas";
 import { AnimationPreview } from "./AnimationPreview";
 
-const SLOTS = ["slot-1", "slot-2", "slot-3"] as const;
-type SlotId = typeof SLOTS[number];
+const SLOT_COUNT = 10;
+const SLOTS = Array.from({ length: SLOT_COUNT }, (_, i) => `slot-${i + 1}`);
+type SlotId = string;
 
-const SLOT_LABELS: Record<SlotId, string> = {
-  "slot-1": "Look 1",
-  "slot-2": "Look 2",
-  "slot-3": "Look 3",
-};
+const SLOT_LABELS: Record<SlotId, string> = Object.fromEntries(
+  SLOTS.map((s, i) => [s, `Look ${i + 1}`])
+);
 
 const DEFAULT_CONFIG: Omit<OutfitConfig, "id" | "updatedAt"> = {
   slotId: "slot-1",
@@ -134,14 +133,14 @@ export default function AdminEditor() {
   return (
     <div className="space-y-6">
       {/* Slot tabs */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {SLOTS.map((s) => {
           const hasEdits = Boolean(localEdits[s] && Object.keys(localEdits[s]).length > 0);
           return (
             <button
               key={s}
               onClick={() => setActiveSlot(s)}
-              className={`flex-1 rounded-lg border py-2 text-sm font-semibold transition ${
+              className={`flex-1 min-w-[80px] rounded-lg border py-2 text-sm font-semibold transition ${
                 activeSlot === s
                   ? "border-gray-900 bg-gray-900 text-white"
                   : "border-gray-300 text-gray-600 hover:border-gray-500"

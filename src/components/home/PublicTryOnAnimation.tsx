@@ -41,8 +41,11 @@ import type { OutfitConfig } from "@/types";
 const CANVAS_W = 600;
 const CANVAS_H = 1000;
 
-// Horizontal distance between outfit slots (fraction of viewport width)
-const SLOT_VW = 0.36;
+// Horizontal distance between outfit slots (fraction of viewport width).
+// Tightened so neighboring outfit cards sit closer to the center model for a
+// more premium, compact carousel. Cards are REST_*_W_VW (0.12 vw) wide, so this
+// stays comfortably above that — neighbors move in without overlapping.
+const SLOT_VW = 0.24;
 
 // Resting shirt — upper portion of the viewport, centered in its slot
 const REST_SHIRT_Y_VH = 0.27; // vertical center as fraction of vh
