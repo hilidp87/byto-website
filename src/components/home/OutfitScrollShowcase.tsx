@@ -331,7 +331,7 @@ export function OutfitScrollShowcase({
         {/* Fixed model — always visible under garments */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/outfits/model.png"
+          src="/outfits/model-v2.png"
           alt="LOKYO model"
           className="absolute inset-0 h-full w-full select-none object-contain object-center"
           draggable={false}
