@@ -218,7 +218,7 @@ export function AlignmentCanvas({ shirt, pants, onShirtChange, onPantsChange }: 
   return (
     <div
       ref={canvasRef}
-      className="relative mx-auto select-none overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-b from-pink-50 to-rose-100"
+      className="relative mx-auto select-none overflow-hidden rounded-2xl border border-gray-200 bg-white"
       style={{
         width: "min(100%, calc(100vh * 3 / 5))",
         aspectRatio: "3/5",

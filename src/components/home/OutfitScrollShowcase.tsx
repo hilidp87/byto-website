@@ -325,8 +325,7 @@ export function OutfitScrollShowcase({
       <div
         className="sticky top-0 h-screen overflow-hidden"
         style={{
-          background:
-            "radial-gradient(ellipse 80% 90% at 50% 60%, #f6d3ee 0%, #f0aadf 40%, #e879cf 75%, #db63c2 100%)",
+          background: "#ffffff",
         }}
       >
         {/* Fixed model — always visible under garments */}

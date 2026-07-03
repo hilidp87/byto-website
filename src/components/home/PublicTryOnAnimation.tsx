@@ -427,8 +427,7 @@ export function PublicTryOnAnimation({ configs }: Props) {
         width: "100%",
         overflow: "hidden",
         touchAction: "pan-y",
-        background:
-          "radial-gradient(ellipse 80% 90% at 50% 60%, #f6d3ee 0%, #f0aadf 40%, #e879cf 75%, #db63c2 100%)",
+        background: "#ffffff",
       }}
     >
       {/* ── Model — stays fixed at center. Always behind garments ── */}
