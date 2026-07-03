@@ -59,6 +59,11 @@ const REST_PANTS_W_VW = 0.12;
 const SNAP_TRANSITION = { type: "spring" as const, stiffness: 220, damping: 30, mass: 1 };
 const GARMENT_SPRING = { stiffness: 220, damping: 30, restDelta: 0.001 };
 
+// Infinite-loop tuning — outfits sit on a ring and wrap seamlessly in both
+// directions. A garment fades to 0 as it travels to the back of the wheel, so
+// the wrap-around seam is never visible, regardless of how many looks exist.
+const SEAM_FADE = 0.6;
+
 // Minimum horizontal drag/swipe distance (px) to trigger a snap
 const SWIPE_THRESHOLD_PX = 50;
 // Minimum cumulative horizontal wheel delta (px) to trigger a snap
@@ -74,6 +79,16 @@ function lerp(a: number, b: number, t: number) {
 
 function clamp01(v: number) {
   return Math.max(0, Math.min(1, v));
+}
+
+// Shortest signed offset of an outfit from progress `p` on a ring of `n` slots.
+// Maps into (−n/2, n/2] so every outfit takes the short way around, and the
+// wrap seam sits at the far side of the ring. n < 2 → linear (no loop).
+function ringOffset(raw: number, n: number) {
+  if (n < 2) return raw;
+  let o = ((raw % n) + n) % n; // [0, n)
+  if (o > n / 2) o -= n;       // (−n/2, n/2]
+  return o;
 }
 
 // ─── Per-garment animated layer ───────────────────────────────────────────────
@@ -97,6 +112,8 @@ type GarmentLayerProps = {
   ratio: number;
   // Which outfit slot this belongs to
   index: number;
+  // Total number of outfits on the ring (for wrap-around math)
+  total: number;
   // Active outfit index, eased toward target on every gesture (0 → N−1)
   activeProg: MotionValue<number>;
   // Box dims and resize trigger (refs/MVs so transforms always see latest values)
@@ -110,15 +127,22 @@ function GarmentLayer({
   wornCX, wornCY, wornWidth, wornRotation,
   restYVh, restWVw,
   ratio,
-  index, activeProg,
+  index, total, activeProg,
   boxDimsRef, resizeMV,
   zIndex,
 }: GarmentLayerProps) {
-  // How far this outfit is from the active center (in slot units)
-  const offset = useTransform(activeProg, (p) => index - p);
+  // How far this outfit is from the active center (in slot units), wrapped
+  // around the ring so the carousel loops seamlessly in both directions.
+  const offset = useTransform(activeProg, (p) => ringOffset(index - p, total));
 
   // wornT: 0 = fully resting, 1 = fully on model
   const wornT = useTransform(offset, (off) => clamp01(1 - Math.abs(off)));
+
+  // Back-of-wheel fade: fully visible near center, fading to 0 as the outfit
+  // approaches the far side of the ring, so the wrap seam is never seen.
+  const styleOpacity = useTransform(offset, (off) =>
+    total < 2 ? 1 : clamp01((total / 2 - Math.abs(off)) / SEAM_FADE)
+  );
 
   // left: lerp between resting slot center and worn admin position
   const styleLeft = useTransform(
@@ -192,6 +216,7 @@ function GarmentLayer({
         width: styleWidth,
         height: "auto",
         rotate: styleRotate,
+        opacity: styleOpacity,
         zIndex,
         pointerEvents: "none",
         userSelect: "none",
@@ -294,23 +319,24 @@ export function PublicTryOnAnimation({ configs }: Props) {
   // never tied to scroll position.
   const activeProg = useMotionValue(0);
 
+  const N = configs.length;
+
   useMotionValueEvent(activeProg, "change", (v) => {
-    const rounded = Math.round(v);
-    if (rounded !== activeIndexRef.current) {
-      activeIndexRef.current = rounded;
-      setActiveIndex(rounded);
+    // activeProg is unbounded (the ring wraps), so fold it back into [0, N).
+    const wrapped = N > 0 ? ((Math.round(v) % N) + N) % N : 0;
+    if (wrapped !== activeIndexRef.current) {
+      activeIndexRef.current = wrapped;
+      setActiveIndex(wrapped);
     }
   });
 
-  const N = configs.length;
-
   const goTo = useCallback(
     (next: number) => {
-      const clamped = Math.max(0, Math.min(N - 1, next));
+      // No clamping — the ring loops freely past either end (…10 → 1, 1 → 10).
       setHasInteracted(true);
-      animate(activeProg, clamped, SNAP_TRANSITION);
+      animate(activeProg, next, SNAP_TRANSITION);
     },
-    [N, activeProg]
+    [activeProg]
   );
 
   // Gesture state refs (no re-renders during a drag/wheel sequence)
@@ -481,6 +507,7 @@ export function PublicTryOnAnimation({ configs }: Props) {
                 restWVw={REST_PANTS_W_VW}
                 ratio={pantsRatio}
                 index={i}
+                total={N}
                 activeProg={activeProg}
                 boxDimsRef={boxDimsRef}
                 resizeMV={resizeMV}
@@ -500,6 +527,7 @@ export function PublicTryOnAnimation({ configs }: Props) {
                 restWVw={REST_SHIRT_W_VW}
                 ratio={shirtRatio}
                 index={i}
+                total={N}
                 activeProg={activeProg}
                 boxDimsRef={boxDimsRef}
                 resizeMV={resizeMV}
