@@ -472,7 +472,7 @@ export function PublicTryOnAnimation({ configs }: Props) {
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/outfits/model-v2.png"
+          src="/outfits/model-v3.png"
           alt="LOKYO model"
           style={{
             position: "absolute",
