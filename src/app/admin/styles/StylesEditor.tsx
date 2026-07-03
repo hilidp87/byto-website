@@ -297,7 +297,7 @@ export default function StylesEditor() {
           {/* Model base */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/outfits/model-v2.png"
+            src="/outfits/model-v3.png"
             alt="model"
             className="pointer-events-none absolute inset-0 h-full w-full object-contain"
             draggable={false}
