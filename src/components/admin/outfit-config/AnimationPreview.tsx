@@ -78,7 +78,7 @@ export function AnimationPreview({ shirt, pants }: Props) {
         {/* Model */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/outfits/model.png"
+          src="/outfits/model-v2.png"
           alt="model"
           className="pointer-events-none absolute inset-0 h-full w-full object-contain"
           draggable={false}
