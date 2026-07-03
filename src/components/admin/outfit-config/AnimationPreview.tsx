@@ -72,7 +72,7 @@ export function AnimationPreview({ shirt, pants }: Props) {
 
       <div
         ref={scope}
-        className="relative mx-auto overflow-hidden rounded-xl border border-gray-200 bg-gradient-to-b from-pink-50 to-rose-100"
+        className="relative mx-auto overflow-hidden rounded-xl border border-gray-200 bg-white"
         style={{ width: "100%", maxWidth: 280, aspectRatio: "3/5" }}
       >
         {/* Model */}

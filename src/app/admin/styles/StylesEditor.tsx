@@ -286,7 +286,7 @@ export default function StylesEditor() {
       <div className="flex-1">
         <div
           ref={canvasRef}
-          className="relative mx-auto overflow-hidden rounded-xl border border-gray-200 bg-pink-100"
+          className="relative mx-auto overflow-hidden rounded-xl border border-gray-200 bg-white"
           style={{
             width: "min(100vw, calc(100vh * 3 / 5))",
             aspectRatio: "3/5",
