@@ -243,7 +243,7 @@ function ActiveCaption({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
-      className="absolute bottom-8 sm:bottom-3 left-0 right-0 z-30 flex flex-col items-center gap-3 px-4 text-center pointer-events-none"
+      className="absolute bottom-8 left-0 right-0 z-30 flex flex-col items-center gap-3 px-4 text-center pointer-events-none"
     >
       {(config.title || config.subtitle) && (
         <div>
@@ -462,9 +462,13 @@ export function PublicTryOnAnimation({ configs }: Props) {
         style={{
           position: "absolute",
           left: "50%",
-          top: "50%",
+          // Centre the model within the top 72vh "band" (was full height,
+          // centred at 50%). This frees a ~28vh strip below the feet so the
+          // caption sits ~190px under the feet on desktop, scaling with the
+          // viewport. Height-driven now so garment mapping stays proportional.
+          top: "36vh",
           transform: "translate(-50%, -50%)",
-          width: "min(100vw, calc(100vh * 3 / 5))",
+          height: "min(calc(100vw * 5 / 3), 72vh)",
           aspectRatio: "3 / 5",
           zIndex: 5,
           pointerEvents: "none",
