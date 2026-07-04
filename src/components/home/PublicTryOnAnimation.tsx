@@ -462,13 +462,9 @@ export function PublicTryOnAnimation({ configs }: Props) {
         style={{
           position: "absolute",
           left: "50%",
-          // Centre the model within the top 72vh "band" (was full height,
-          // centred at 50%). This frees a ~28vh strip below the feet so the
-          // caption sits ~190px under the feet on desktop, scaling with the
-          // viewport. Height-driven now so garment mapping stays proportional.
-          top: "36vh",
+          top: "50%",
           transform: "translate(-50%, -50%)",
-          height: "min(calc(100vw * 5 / 3), 72vh)",
+          width: "min(100vw, calc(100vh * 3 / 5))",
           aspectRatio: "3 / 5",
           zIndex: 5,
           pointerEvents: "none",

@@ -190,7 +190,7 @@ function Caption({
   return (
     <motion.div
       style={{ opacity, y }}
-      className="absolute bottom-6 left-0 right-0 z-20 flex flex-col items-center gap-2.5 px-4 text-center sm:bottom-3"
+      className="absolute bottom-6 left-0 right-0 z-20 flex flex-col items-center gap-2.5 px-4 text-center sm:bottom-10"
     >
       <div>
         <p className="font-serif text-2xl font-bold text-gray-900 sm:text-3xl">
