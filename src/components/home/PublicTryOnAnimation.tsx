@@ -43,17 +43,22 @@ const CANVAS_H = 1000;
 
 // Horizontal distance between outfit slots (fraction of viewport width).
 // Tightened so neighboring outfit cards sit closer to the center model for a
-// more premium, compact carousel. Cards are REST_*_W_VW (0.12 vw) wide, so this
-// stays comfortably above that — neighbors move in without overlapping.
+// more premium, compact carousel.
 const SLOT_VW = 0.24;
 
-// Resting shirt — upper portion of the viewport, centered in its slot
-const REST_SHIRT_Y_VH = 0.27; // vertical center as fraction of vh
-const REST_SHIRT_W_VW = 0.12; // width as fraction of vw
+// The model occupies the top MODEL_BAND_VH% of the viewport (centred within
+// that band), leaving a strip below the feet for the caption. Larger value =
+// bigger model + smaller feet→caption gap. Everything below is derived from
+// the model box, so changing this rescales the side previews automatically.
+const MODEL_BAND_VH = 85;
 
-// Resting pants — lower portion
-const REST_PANTS_Y_VH = 0.66;
-const REST_PANTS_W_VW = 0.12;
+// Resting (side-preview) garments — positioned and sized RELATIVE TO THE MODEL
+// BOX (not the viewport) so they scale with the model and stay vertically
+// aligned with the body automatically if MODEL_BAND_VH changes.
+const REST_SHIRT_CY_FRAC = 0.28; // vertical centre, fraction of box height (torso)
+const REST_SHIRT_W_FRAC = 0.30;  // width, fraction of box width
+const REST_PANTS_CY_FRAC = 0.70; // legs / lower body
+const REST_PANTS_W_FRAC = 0.30;
 
 // Snap transition tuning — premium, no bounce/elastic
 const SNAP_TRANSITION = { type: "spring" as const, stiffness: 220, damping: 30, mass: 1 };
@@ -105,9 +110,9 @@ type GarmentLayerProps = {
   wornCY: number;
   wornWidth: number;
   wornRotation: number;
-  // Resting position (viewport fractions)
-  restYVh: number;
-  restWVw: number;
+  // Resting position — fractions of the MODEL BOX (see constants above)
+  restCyFrac: number;
+  restWFrac: number;
   // Natural image aspect ratio (h / w) — needed for vertical centering
   ratio: number;
   // Which outfit slot this belongs to
@@ -125,7 +130,7 @@ type GarmentLayerProps = {
 function GarmentLayer({
   src, alt,
   wornCX, wornCY, wornWidth, wornRotation,
-  restYVh, restWVw,
+  restCyFrac, restWFrac,
   ratio,
   index, total, activeProg,
   boxDimsRef, resizeMV,
@@ -151,7 +156,7 @@ function GarmentLayer({
       const vw = window.innerWidth;
       const bd = boxDimsRef.current!;
 
-      const restW = vw * restWVw;
+      const restW = bd.width * restWFrac;
       const wornW = (wornWidth / CANVAS_W) * bd.width;
 
       // Resting center X: viewport center + slot offset
@@ -169,17 +174,15 @@ function GarmentLayer({
   const styleTop = useTransform(
     [offset, wornT, resizeMV] as MotionValue<number>[],
     ([_off, wt]: number[]) => {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
       const bd = boxDimsRef.current!;
 
-      const restW = vw * restWVw;
+      const restW = bd.width * restWFrac;
       const restH = restW * ratio;
       const wornW = (wornWidth / CANVAS_W) * bd.width;
       const wornH = wornW * ratio;
 
-      // Resting center Y: fixed band within viewport
-      const restCY = vh * restYVh;
+      // Resting center Y: torso/legs band within the model box
+      const restCY = bd.top + restCyFrac * bd.height;
       // Worn center Y: admin position mapped to sticky-container pixels
       const wornCYpx = bd.top + (wornCY / CANVAS_H) * bd.height;
 
@@ -193,9 +196,8 @@ function GarmentLayer({
   const styleWidth = useTransform(
     [offset, wornT, resizeMV] as MotionValue<number>[],
     ([_off, wt]: number[]) => {
-      const vw = window.innerWidth;
       const bd = boxDimsRef.current!;
-      return lerp(vw * restWVw, (wornWidth / CANVAS_W) * bd.width, wt);
+      return lerp(bd.width * restWFrac, (wornWidth / CANVAS_W) * bd.width, wt);
     }
   );
 
@@ -462,13 +464,12 @@ export function PublicTryOnAnimation({ configs }: Props) {
         style={{
           position: "absolute",
           left: "50%",
-          // Centre the model within the top 72vh "band" (was full height,
-          // centred at 50%). This frees a ~28vh strip below the feet so the
-          // caption sits ~190px under the feet on desktop, scaling with the
-          // viewport. Height-driven now so garment mapping stays proportional.
-          top: "36vh",
+          // Centre the model within the top MODEL_BAND_VH% band (was full
+          // height). This frees a strip below the feet for the caption. Height-
+          // driven so worn-garment mapping stays proportional to the model.
+          top: `${MODEL_BAND_VH / 2}vh`,
           transform: "translate(-50%, -50%)",
-          height: "min(calc(100vw * 5 / 3), 72vh)",
+          height: `min(calc(100vw * 5 / 3), ${MODEL_BAND_VH}vh)`,
           aspectRatio: "3 / 5",
           zIndex: 5,
           pointerEvents: "none",
@@ -507,8 +508,8 @@ export function PublicTryOnAnimation({ configs }: Props) {
                 wornCY={config.pantsY}
                 wornWidth={config.pantsWidth}
                 wornRotation={config.pantsRotation}
-                restYVh={REST_PANTS_Y_VH}
-                restWVw={REST_PANTS_W_VW}
+                restCyFrac={REST_PANTS_CY_FRAC}
+                restWFrac={REST_PANTS_W_FRAC}
                 ratio={pantsRatio}
                 index={i}
                 total={N}
@@ -527,8 +528,8 @@ export function PublicTryOnAnimation({ configs }: Props) {
                 wornCY={config.shirtY}
                 wornWidth={config.shirtWidth}
                 wornRotation={config.shirtRotation}
-                restYVh={REST_SHIRT_Y_VH}
-                restWVw={REST_SHIRT_W_VW}
+                restCyFrac={REST_SHIRT_CY_FRAC}
+                restWFrac={REST_SHIRT_W_FRAC}
                 ratio={shirtRatio}
                 index={i}
                 total={N}
