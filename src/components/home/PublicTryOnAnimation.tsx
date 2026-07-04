@@ -243,7 +243,7 @@ function ActiveCaption({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
-      className="absolute bottom-8 left-0 right-0 z-30 flex flex-col items-center gap-3 px-4 text-center pointer-events-none"
+      className="absolute bottom-8 sm:bottom-3 left-0 right-0 z-30 flex flex-col items-center gap-3 px-4 text-center pointer-events-none"
     >
       {(config.title || config.subtitle) && (
         <div>
