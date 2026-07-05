@@ -299,6 +299,60 @@ function ActiveCaption({
   );
 }
 
+// ─── TEMPORARY diagnostics for the "2 looks per side" investigation ─────────
+//
+// Reports, live, in the browser:
+//  - the actual window.innerWidth the two-look condition is comparing against
+//    (re-read on every resize, never a one-time/stale SSR value — the initial
+//    render returns null so there is no SSR/client mismatch)
+//  - whether vw >= TWO_LOOK_MIN_VW is currently true or false
+//  - the exact TWO_LOOK_MIN_VW threshold in use
+//  - totalLooks (N = configs.length): the outfit ring needs AT LEAST 5 active
+//    looks for offset +2 and -2 to be distinct slots at all — at N=3 they fold
+//    into ∓1, and at N=4 left/right "+2" are literally the same slot. A ring
+//    smaller than 5 cannot show 2 distinct looks per side no matter how wide
+//    the viewport is or how correct the spacing math is.
+// Safe to remove once the investigation concludes.
+function TwoLookDebugLabel({ total }: { total: number }) {
+  const [vw, setVw] = useState<number | null>(null);
+
+  useEffect(() => {
+    function update() {
+      setVw(window.innerWidth);
+    }
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  if (vw === null) return null;
+
+  const twoLook = vw >= TWO_LOOK_MIN_VW;
+
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: "fixed",
+        bottom: 4,
+        right: 4,
+        zIndex: 9999,
+        fontSize: 11,
+        lineHeight: 1.4,
+        color: "rgba(0,0,0,0.6)",
+        background: "rgba(255,255,255,0.9)",
+        padding: "4px 6px",
+        borderRadius: 3,
+        pointerEvents: "none",
+        fontFamily: "monospace",
+        whiteSpace: "pre",
+      }}
+    >
+      {`vw=${vw} | twoLook=${twoLook} | threshold=${TWO_LOOK_MIN_VW} | totalLooks=${total}`}
+    </div>
+  );
+}
+
 // ─── Swipe hint ───────────────────────────────────────────────────────────────
 
 function SwipeHint({ hasInteracted }: { hasInteracted: boolean }) {
@@ -602,6 +656,9 @@ export function PublicTryOnAnimation({ configs }: Props) {
 
       {/* ── Swipe hint ── */}
       {N > 1 && <SwipeHint hasInteracted={hasInteracted} />}
+
+      {/* ── TEMPORARY: 2-looks-per-side investigation diagnostics ── */}
+      <TwoLookDebugLabel total={N} />
     </div>
   );
 }
