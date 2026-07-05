@@ -43,8 +43,21 @@ const CANVAS_H = 1000;
 
 // Horizontal distance between outfit slots (fraction of viewport width).
 // Tightened so neighboring outfit cards sit closer to the center model for a
-// more premium, compact carousel.
+// more premium, compact carousel. This is the LEGACY single-look spacing,
+// still used below TWO_LOOK_MIN_VW (see slotSpacingPx) — unchanged.
 const SLOT_VW = 0.24;
+
+// Minimum viewport width (px) at which TWO full-size looks fit on each side
+// without cropping or overlap — verified geometrically (model box + garment
+// width) across common desktop sizes: fits with margin at 1280px+, overflows
+// below ~1200px. Below this width (all tablets/mobile, and narrow desktop
+// windows) we keep the ORIGINAL single-look spacing (SLOT_VW) unchanged —
+// on mobile the model already fills the full viewport width, so there is no
+// room beside it for a second look regardless.
+const TWO_LOOK_MIN_VW = 1280;
+// Breathing room (px) between the model box and the first side-look, and
+// between adjacent side-looks, when two-look spacing is active.
+const SLOT_GAP_PX = 16;
 
 // The model occupies the top MODEL_BAND_VH% of the viewport (centred within
 // that band), leaving a strip below the feet for the caption. Larger value =
@@ -59,6 +72,10 @@ const REST_SHIRT_CY_FRAC = 0.28; // vertical centre, fraction of box height (tor
 const REST_SHIRT_W_FRAC = 0.30;  // width, fraction of box width
 const REST_PANTS_CY_FRAC = 0.70; // legs / lower body
 const REST_PANTS_W_FRAC = 0.30;
+
+// Widest resting garment (shirt vs pants) — used to guarantee two-look
+// spacing never overlaps regardless of which garment is wider.
+const REST_MAX_W_FRAC = Math.max(REST_SHIRT_W_FRAC, REST_PANTS_W_FRAC);
 
 // Snap transition tuning — premium, no bounce/elastic
 const SNAP_TRANSITION = { type: "spring" as const, stiffness: 220, damping: 30, mass: 1 };
@@ -84,6 +101,18 @@ function lerp(a: number, b: number, t: number) {
 
 function clamp01(v: number) {
   return Math.max(0, Math.min(1, v));
+}
+
+// Horizontal distance (px) between adjacent resting slots (offset ±1, ±2, …).
+// Below TWO_LOOK_MIN_VW: legacy fixed-fraction-of-viewport spacing (unchanged
+// mobile/tablet/narrow-desktop behaviour). At/above it: spacing is derived
+// from the model box + garment width so BOTH the ±1 and ±2 slots sit fully
+// on-screen without overlapping the model or each other — and it keeps
+// working automatically if the model size (MODEL_BAND_VH) ever changes.
+function slotSpacingPx(vw: number, boxWidth: number) {
+  if (vw < TWO_LOOK_MIN_VW) return vw * SLOT_VW;
+  const garmentW = boxWidth * REST_MAX_W_FRAC;
+  return boxWidth / 2 + garmentW / 2 + SLOT_GAP_PX;
 }
 
 // Shortest signed offset of an outfit from progress `p` on a ring of `n` slots.
@@ -160,7 +189,7 @@ function GarmentLayer({
       const wornW = (wornWidth / CANVAS_W) * bd.width;
 
       // Resting center X: viewport center + slot offset
-      const restCX = vw / 2 + off * (vw * SLOT_VW);
+      const restCX = vw / 2 + off * slotSpacingPx(vw, bd.width);
       // Worn center X: admin position mapped to sticky-container pixels
       const wornCXpx = bd.left + (wornCX / CANVAS_W) * bd.width;
 
@@ -382,7 +411,7 @@ export function PublicTryOnAnimation({ configs }: Props) {
       const dx = e.clientX - dragStartX.current;
       // Live-follow the drag for immediate, pixel-accurate feedback
       const vw = window.innerWidth;
-      const slotPx = vw * SLOT_VW;
+      const slotPx = slotSpacingPx(vw, boxDimsRef.current!.width);
       activeProg.set(dragStartIndex.current - dx / slotPx);
     }
 
