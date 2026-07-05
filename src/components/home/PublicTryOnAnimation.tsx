@@ -1,4 +1,5 @@
 "use client";
+// deploy-cache-bust: DEPLOY-CHECK-2026-07-05T10:51:55Z (safe to remove once redeploy is confirmed)
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
